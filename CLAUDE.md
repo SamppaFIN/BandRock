@@ -195,7 +195,9 @@ Jokainen vastaus alkaa lyhyellä otsikolla. Se on tehty luettavaksi nopeasti.
 - `width`/`height`-attribuutit kuvissa asettavat myös CSS-korkeuden, joka kumoaa `aspect-ratio`n ja venyttää kuvan. Kuville tarvitaan `height: auto`.
 - Oma `display`-sääntö kumoaa `hidden`-attribuutin. Tarvitaan `[hidden] { display: none !important }`.
 - `flex-basis` koskee pääakselia: pystysuunnassa se asettaa **korkeuden**, ja `aspect-ratio` venyttää silloin leveyden. Rivikohtaiset flex-arvot vain container queryn sisään.
-- Spotifyn artistiupotus jättää tyhjän kappalelistan kohdalle valkoista tilaa, kun kappaleita on yksi. Käytössä Spotifyn oma 152 px.
+- Spotifyn upotuksen valkoinen alue on **sen oman kehyksen sisällä**, joten CSS ei ylety siihen — ei taustaväriä, ei läpinäkyvyyttä. Upotus piirtää kahta eri asettelua: joskus täyden 152 px:n soittimen, joskus matalan version ja valkoista alle. Laatikon rajaaminen matalaksi leikkasi toistonapin pois. Ratkaisu: laatikko on musta ja soitin ladataan vasta napista, kuten keikkariveillä.
+- Kun laatikolla on 1 px reunat ja `box-sizing: border-box`, `height: 152px` jättää sisällölle 150 px. Upotukselle varataan 154 px.
+- `npm install --no-save X` poistaa muut tallentamattomat paketit. Testipaketit (axe-core, pngjs) asennetaan samalla komennolla.
 - Testit eivät nähneet näitä kolmea vikaa — kuvakaappaus näki. Katso kuvat aina itse.
 - Headless Chrome ei tee alle noin 500 px leveää ikkunaa. Testaa kapea näkymä iframessa, jonka leveys on 390 px.
 

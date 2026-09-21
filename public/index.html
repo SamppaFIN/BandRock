@@ -205,10 +205,14 @@
   .cover .kind { font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); }
   .video { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 10px; overflow: hidden; border: 1px solid var(--hairline); }
   .video iframe { width: 100%; height: 100%; border: 0; }
-  /* Spotify suosittelee artistille 352 px, mutta yhdellä singlellä kappalelista jää
-     tyhjäksi ja näkyy valkoisena. 152 px on tasan soittimen oma korkeus. */
-  .spotify { height: 152px; border-radius: 12px; overflow: hidden; border: 1px solid var(--hairline); background: #000; }
-  .spotify iframe { width: 100%; height: 100%; border: 0; }
+  /* 152 px on Spotifyn soittimen oma korkeus. Upotus on valkoinen ennen kuin se on
+     latautunut, joten iframe saa mustan pohjan ja tumman värimaailman: ei valkoista välähdystä. */
+  /* Spotifyn kehys on eri sivusto, eikä sen valkoiseen taustaan ylety CSS:llä. Siksi
+     laatikko pysyy mustana ja soitin ladataan vasta napista — sama tapa kuin keikkariveillä.
+     Samalla Spotifylle ei lähde yhtään pyyntöä ennen kuin kävijä itse haluaa kuunnella. */
+  /* 154 px = soittimen oma 152 px + reunaviivat, jotta sisältöön jää tasan 152 px. */
+  .spotify { height: 154px; border-radius: 12px; overflow: hidden; border: 1px solid var(--hairline); background: #000; display: flex; align-items: center; justify-content: center; }
+  .spotify iframe { width: 100%; height: 100%; border: 0; background: #000; color-scheme: dark; }
 
   /* ── Napit ────────────────────────────────────────────────────────── */
   .btn {
@@ -351,6 +355,17 @@
   }
   .social a:hover { border-bottom-color: var(--text); }
 
+  .next-cta { max-width: 860px; margin: 0 auto; display: flex; justify-content: center; padding-top: 26px; }
+  .prose { display: flex; flex-direction: column; gap: 16px; }
+  .prose h3 { font-size: 11px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--gold); font-weight: 700; margin-top: 6px; }
+  .prose p { font-size: 17px; line-height: 1.6; color: var(--text-soft); text-wrap: pretty; }
+  .prose .lead { font-size: 19px; font-style: italic; color: var(--text); }
+  .prose ol, .prose ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
+  .prose li { font-size: 17px; line-height: 1.55; color: var(--text-soft); display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: baseline; }
+  .prose li b { color: var(--text); }
+  .prose li .n { color: var(--gold); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .prose li .n.done { color: var(--ok); }
+
   .footer { max-width: 860px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 22px 0 0; color: var(--text-faint); }
   .footer .line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--hairline), transparent); }
   .footer .text { font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase; text-align: center; }
@@ -452,8 +467,9 @@
           <iframe src="https://www.youtube-nocookie.com/embed/GKlZrIftTZ8" title="Madrid – musiikkivideo" allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" loading="lazy"></iframe>
         </div>
       </div>
-      <div class="spotify">
-        <iframe src="https://open.spotify.com/embed/artist/6MZ5sOhKDci1bYweyqJBj7" title="Spotify: Ray Jone &amp; The Nekalabama Thunderstorm" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+      <div class="spotify" id="spotify-box">
+        <button class="play" type="button" id="spotify-play">▶ Kuuntele Spotifyssa</button>
+        <noscript><a class="gig-link" href="https://open.spotify.com/artist/6MZ5sOhKDci1bYweyqJBj7" target="_blank" rel="noreferrer">Avaa Spotifyssa</a></noscript>
       </div>
     </section>
 
@@ -496,7 +512,56 @@
     <div class="text">Ray Jone &amp; The Nekalabama Thunderstorm</div>
     <div class="line"></div>
   </footer>
+
+  <div class="next-cta">
+    <button class="btn" type="button" id="next-open">Mitä seuraavaksi</button>
+  </div>
 </div>
+
+<dialog class="dialog" id="next-dialog" aria-labelledby="next-title">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2 class="label" id="next-title">Mitä seuraavaksi</h2>
+      <button class="x" type="button" id="next-x" aria-label="Sulje">✕</button>
+    </div>
+    <div class="prose">
+      <p class="lead">Tämä sivu on nyt yhden bändin sivu. Seuraavaksi siitä tehdään pohja, jolla kuka tahansa saa oman samanlaisen.</p>
+
+      <h3>Idea lyhyesti</h3>
+      <p>Kuvittele ilmoitustaulu treenikämpän seinällä. Siinä on lappuja: bändejä, keikkoja, “rumpali haussa”, “vahvistin myynnissä”. Etusivusta tulee se taulu, ja kun klikkaat lappua, aukeaa tämännäköinen sivu. Tämä sivu on siis yksi lappu sadan joukossa.</p>
+
+      <h3>Näin se toimii</h3>
+      <ol>
+        <li><span class="n">1</span><span><b>Kuka tahansa saa lisätä.</b> Ei tunnusta, ei salasanaa, ei sähköpostia. Täytät lomakkeen ja ilmoitus on heti taululla.</span></li>
+        <li><span class="n">2</span><span><b>Saat viisi merkkiä muistiin</b>, esimerkiksi K7M2P. Sillä muokkaat tai poistat oman ilmoituksesi myöhemmin. Saat myös valmiin linkin, jonka voi tallentaa puhelimeen.</span></li>
+        <li><span class="n">3</span><span><b>Koodia ei voi palauttaa.</b> Jos se häviää, ilmoitusta ei pysty muokkaamaan. Silloin tehdään vain uusi. Tämä on hinta siitä, ettei tarvitse luoda tiliä.</span></li>
+        <li><span class="n">4</span><span><b>Ilmoituksen löytää suodattimella.</b> Valitset tyypin, kaupungin ja ajankohdan, tai kirjoitat hakuun vaikka “blues”.</span></li>
+        <li><span class="n">5</span><span><b>Kuvan saa liittää.</b> Puhelin poistaa kuvasta automaattisesti sijaintitiedon, ettei kotiosoite lähde mukaan kuvan kylkeen.</span></li>
+      </ol>
+
+      <h3>Missä kaikki pyörii</h3>
+      <p>Sivu on GitHubissa ja ilmoitukset Cloudflaressa, molemmat ilmaisella tasolla. Ei omaa palvelinta, ei tietokantaa, ei kuukausimaksua. Ilmoitukset ovat tiedostoja, vähän kuin kansio jossa on lappuja.</p>
+
+      <h3>Järjestys</h3>
+      <ul>
+        <li><span class="n done">✓</span><span>Tämä sivu: ilme, keikkalista, soittimet ja yhteystiedot</span></li>
+        <li><span class="n">1</span><span>Sivu muuttuu pohjaksi — näyttää edelleen täsmälleen samalta</span></li>
+        <li><span class="n">2</span><span>Ilmoitusten tallennus ja koodit</span></li>
+        <li><span class="n">3</span><span>Ilmoitustaulu ja suodattimet</span></li>
+        <li><span class="n">4</span><span>Lisäys ja muokkaus koodilla</span></li>
+        <li><span class="n">5</span><span>Kuvat</span></li>
+        <li><span class="n">6</span><span>Asiattoman ilmoituksen piilotus</span></li>
+      </ul>
+      <p>Jokaisen vaiheen jälkeen pysähdytään katsomaan, miltä näyttää, ennen kuin jatketaan.</p>
+
+      <h3>Mitä tämä ei ole</h3>
+      <p>Ei lipunmyyntiä, ei kirjautumista, ei kommentteja eikä viestejä. Yhteydenotto tapahtuu sillä tavalla, jonka ilmoittaja itse kirjoittaa ilmoitukseensa — ja se näkyy kaikille, joten sinne laitetaan vain se mitä uskaltaa julkaista.</p>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" type="button" id="next-close">Sulje</button>
+    </div>
+  </div>
+</dialog>
 
 <dialog class="dialog" id="gig-dialog" aria-labelledby="dlg-title">
   <div class="sheet">
@@ -691,6 +756,25 @@
   document.getElementById('gig-cancel').addEventListener('click', function () { dialog.close(); });
   document.getElementById('gig-x').addEventListener('click', function () { dialog.close(); });
   dialog.addEventListener('click', function (e) { if (e.target === dialog) dialog.close(); });
+
+  // Bändin oma Spotify-soitin: ladataan vasta napista, jotta laatikko pysyy mustana
+  // eikä Spotifyn valkoinen latausnäkymä välähdä sivulla.
+  document.getElementById('spotify-play').addEventListener('click', function () {
+    var box = document.getElementById('spotify-box');
+    var f = document.createElement('iframe');
+    f.src = 'https://open.spotify.com/embed/artist/6MZ5sOhKDci1bYweyqJBj7?theme=0';
+    f.title = 'Spotify: Ray Jone & The Nekalabama Thunderstorm';
+    f.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
+    f.setAttribute('allowfullscreen', '');
+    box.replaceChildren(f);
+  });
+
+  // "Mitä seuraavaksi" -ikkuna. <dialog> hoitaa fokusansan ja Esc-sulkemisen.
+  var nextDialog = document.getElementById('next-dialog');
+  document.getElementById('next-open').addEventListener('click', function () { nextDialog.showModal(); });
+  document.getElementById('next-x').addEventListener('click', function () { nextDialog.close(); });
+  document.getElementById('next-close').addEventListener('click', function () { nextDialog.close(); });
+  nextDialog.addEventListener('click', function (e) { if (e.target === nextDialog) nextDialog.close(); });
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
