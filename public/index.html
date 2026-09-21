@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ray Jone &amp; The Nekalabama Thunderstorm</title>
+<meta name="description" content="Ray Jone &amp; The Nekalabama Thunderstorm: country soul, blues ja Americana. Uusin single Madrid, keikat ja keikkamyynti.">
+<link rel="icon" type="image/png" href="img/logo.png">
+<style>
+@font-face { font-family: 'Gentium Basic'; font-style: italic; font-weight: 400; font-display: swap; src: url("fonts/gentium-basic-italic-400.woff2") format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Gentium Basic'; font-style: italic; font-weight: 700; font-display: swap; src: url("fonts/gentium-basic-italic-700.woff2") format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Gentium Basic'; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/gentium-basic-normal-400.woff2") format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Gentium Basic'; font-style: normal; font-weight: 700; font-display: swap; src: url("fonts/gentium-basic-normal-700.woff2") format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #000; }
+body { -webkit-font-smoothing: antialiased; color: #fff; font-family: 'Gentium Basic', 'Gentium Book Basic', 'Gentium Plus', Georgia, serif; }
+a { color: #f5b122; text-decoration: none; }
+a:hover { color: #fff; }
+h1 { margin: 0; }
+p { margin: 0; }
+
+.page { padding: clamp(20px, 4vw, 52px) clamp(14px, 3vw, 28px) 56px; min-height: 100vh; }
+.wrap { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.card { border: 1px solid rgba(255, 255, 255, 0.22); }
+.pad { padding: clamp(22px, 4vw, 34px) clamp(20px, 4vw, 36px); display: flex; flex-direction: column; gap: 20px; }
+.label { font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: #f5b122; }
+.rule { height: 1px; background: rgba(255, 255, 255, 0.22); }
+.muted { color: rgba(255, 255, 255, 0.7); font-style: italic; font-size: 16px; }
+
+.hero { padding: clamp(26px, 5vw, 44px) 24px 30px; display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
+.logo { display: block; width: clamp(190px, 42vw, 320px); height: auto; }
+.name { font-size: clamp(34px, 6.4vw, 62px); line-height: 1; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 700; }
+.band { font-size: clamp(12px, 1.9vw, 17px); letter-spacing: 0.24em; text-transform: uppercase; color: rgba(255, 255, 255, 0.9); text-wrap: balance; }
+.tagline { font-size: clamp(15px, 2.4vw, 20px); font-style: italic; color: rgba(255, 255, 255, 0.88); line-height: 1.5; max-width: 420px; text-wrap: balance; }
+.amber-rule { width: 44px; height: 1px; background: #f5b122; }
+.genres { font-size: 11px; letter-spacing: 0.34em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
+
+.photo { padding: 10px; }
+.photo div { width: 100%; aspect-ratio: 3 / 2; }
+.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.bio p { font-size: clamp(17px, 2.1vw, 20px); line-height: 1.6; text-wrap: pretty; color: rgba(255, 255, 255, 0.86); }
+.bio p:first-of-type { color: #fff; }
+
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.head em { font-size: 15px; color: rgba(255, 255, 255, 0.7); }
+.media { display: flex; gap: clamp(16px, 3vw, 26px); flex-wrap: wrap; align-items: flex-start; }
+.cover { flex: 0 1 210px; min-width: 160px; display: flex; flex-direction: column; gap: 12px; }
+.cover img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
+.cover .title { font-size: 21px; line-height: 1.2; }
+.cover .kind { font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.58); }
+.video { flex: 1 1 300px; min-width: 0; aspect-ratio: 16 / 9; background: #0b0b0b; }
+.video iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+.gigs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.gig { display: grid; grid-template-columns: 150px 1fr auto; gap: 6px 18px; padding: 16px 0; border-top: 1px solid rgba(255, 255, 255, 0.14); align-items: baseline; }
+.gig:first-child { border-top: 0; padding-top: 0; }
+.gig-date { color: #f5b122; font-size: 18px; }
+.gig-time { display: block; font-size: 14px; color: rgba(255, 255, 255, 0.6); }
+.gig-artist { font-size: 20px; line-height: 1.25; overflow-wrap: anywhere; }
+.gig-place { font-size: 16px; color: rgba(255, 255, 255, 0.75); overflow-wrap: anywhere; }
+.gig-note { font-size: 15px; font-style: italic; color: rgba(255, 255, 255, 0.7); overflow-wrap: anywhere; }
+.gig-link { font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase; border-bottom: 1px solid rgba(245, 177, 34, 0.45); padding-bottom: 2px; }
+.gig-link:hover { border-bottom-color: #fff; }
+.gig-play { grid-column: 2 / -1; }
+.gig-player { grid-column: 1 / -1; width: 100%; background: #0b0b0b; }
+.play { font: inherit; font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase; color: #f5b122; background: none; border: 1px solid rgba(245, 177, 34, 0.45); padding: 8px 14px; cursor: pointer; }
+.play:hover { color: #fff; border-color: #fff; }
+
+.form { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field.full { grid-column: 1 / -1; }
+.field .t { font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(255, 255, 255, 0.58); }
+.field .hint { font-size: 14px; font-style: italic; color: rgba(255, 255, 255, 0.5); }
+.field input { font: inherit; font-size: 17px; color: #fff; background: #0b0b0b; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 0; padding: 10px 12px; width: 100%; color-scheme: dark; }
+.field input:focus { outline: 2px solid #f5b122; outline-offset: 1px; border-color: transparent; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.btn { font: inherit; font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase; color: #000; background: #f5b122; border: 0; padding: 12px 22px; cursor: pointer; justify-self: start; }
+.btn:hover { background: #fff; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.form-status { grid-column: 1 / -1; font-size: 16px; }
+.form-status.err { color: #ff8a80; }
+
+.booking { display: flex; flex-wrap: wrap; gap: 22px 40px; align-items: flex-end; justify-content: space-between; }
+.col { display: flex; flex-direction: column; gap: 4px; }
+.col .t { font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(255, 255, 255, 0.58); }
+.col .big { font-size: clamp(24px, 3.4vw, 30px); line-height: 1.1; }
+.col .big.small { font-size: clamp(19px, 2.6vw, 24px); overflow-wrap: anywhere; }
+.social { display: flex; gap: 10px 28px; flex-wrap: wrap; align-items: center; }
+.social a { font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase; border-bottom: 1px solid rgba(245, 177, 34, 0.45); padding-bottom: 2px; }
+.social a:hover { border-bottom-color: #fff; }
+
+.footer { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 18px 0 0; opacity: 0.55; }
+.footer .line { flex: 1; height: 1px; background: rgba(255, 255, 255, 0.22); }
+.footer .text { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; white-space: nowrap; }
+
+@media (max-width: 560px) {
+  .form { grid-template-columns: 1fr; }
+  .gig { grid-template-columns: 1fr; }
+  .gig-play { grid-column: 1; }
+  .footer .text { white-space: normal; text-align: center; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="wrap">
+
+    <header class="card hero">
+      <h1><img class="logo" src="img/logo.png" width="443" height="422" alt="RJ/NT – Ray Jone &amp; The Nekalabama Thunderstorm"></h1>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px">
+        <div class="name">Ray Jone</div>
+        <div class="band">&amp; The Nekalabama Thunderstorm</div>
+      </div>
+      <div class="tagline">for the long drives, late nights and lives lived full</div>
+      <div class="amber-rule"></div>
+      <div class="genres">Country soul · Blues · Americana</div>
+    </header>
+
+    <div class="card photo">
+      <div><img src="img/band.jpg" alt="Ray Jone &amp; The Nekalabama Thunderstorm"></div>
+    </div>
+
+    <section class="card pad bio">
+      <div class="label">Bio</div>
+      <p>Ray Jone &amp; The Nekalabama Thunderstorm blend raw country soul with deep blues roots, creating a sound that’s as weathered and honest as the stories they tell.</p>
+      <p>The band craft music that feels both grounded and electrified — like a thunderstorm rolling through a southern backroad town.</p>
+      <p>Heartfelt, gritty, and steeped in Americana, Ray Jone and The Nekalabama Thunderstorm offer songs for the long drives, late nights, and lives lived full.</p>
+    </section>
+
+    <section class="card pad">
+      <div class="head">
+        <div class="label">Kuuntele · Listen</div>
+        <em>Uusin single</em>
+      </div>
+      <div class="media">
+        <div class="cover">
+          <img src="img/madrid.jpg" alt="Madrid">
+          <div>
+            <div class="title">Madrid</div>
+            <div class="kind">Single</div>
+          </div>
+        </div>
+        <div class="video">
+          <iframe src="https://www.youtube-nocookie.com/embed/GKlZrIftTZ8" title="Madrid" allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" loading="lazy"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <section class="card pad" id="keikat">
+      <div class="label">Keikat · Gigs</div>
+      <p class="muted" id="gigs-status" aria-live="polite">Ladataan keikkoja…</p>
+      <noscript><p class="muted">Keikkalista vaatii JavaScriptin.</p></noscript>
+      <ol class="gigs" id="gigs"></ol>
+
+      <div class="rule"></div>
+      <div class="label">Lisää keikka · Add a gig</div>
+      <form class="form" id="gig-form">
+        <label class="field"><span class="t">Päivä *</span><input type="date" name="date" required></label>
+        <label class="field"><span class="t">Kellonaika</span><input type="time" name="time"></label>
+        <label class="field full"><span class="t">Kuka esiintyy *</span><input type="text" name="artist" required maxlength="80"></label>
+        <label class="field"><span class="t">Paikka *</span><input type="text" name="venue" required maxlength="80"></label>
+        <label class="field"><span class="t">Kaupunki *</span><input type="text" name="city" required maxlength="60"></label>
+        <label class="field full"><span class="t">Lisätietoa</span><input type="text" name="note" maxlength="300" placeholder="esim. vapaa pääsy, ovet 19"></label>
+        <label class="field full"><span class="t">Info- tai lippulinkki</span><input type="url" name="url" maxlength="300" placeholder="https://"></label>
+        <label class="field full"><span class="t">Musiikki tai video</span><input type="url" name="media" maxlength="300" placeholder="https://open.spotify.com/track/…">
+          <span class="hint">YouTube-, Spotify- tai SoundCloud-linkki. Soitin näkyy ilmoituksessa.</span></label>
+        <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+        <button class="btn" type="submit" id="gig-submit">Lisää keikka</button>
+        <p class="form-status" id="form-status" role="status"></p>
+      </form>
+    </section>
+
+    <section class="card pad">
+      <div class="label">Keikkamyynti · Booking</div>
+      <div class="booking">
+        <div class="col">
+          <div class="t">Puhelin</div>
+          <div class="big"><a href="tel:+358408121751">040 812 1751</a></div>
+        </div>
+        <div class="col">
+          <div class="t">Sähköposti</div>
+          <div class="big small"><a href="mailto:nekalabama@gmail.com">nekalabama@gmail.com</a></div>
+        </div>
+        <div class="social">
+          <a href="https://www.facebook.com/profile.php?id=61590496347140" target="_blank" rel="noreferrer">Facebook</a>
+          <a href="https://www.instagram.com/nekalabama_music_official/" target="_blank" rel="noreferrer">Instagram</a>
+          <a href="https://www.youtube.com/watch?v=GKlZrIftTZ8" target="_blank" rel="noreferrer">YouTube</a>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer">
+      <div class="line"></div>
+      <div class="text">Ray Jone &amp; The Nekalabama Thunderstorm</div>
+      <div class="line"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // Keikkalistan Worker. Vaihda tähän Workerin osoite, kun se on julkaistu (README kohta 3).
+  var API_URL = 'https://nekalabama-gigs.REPLACE-ME.workers.dev/gigs';
+  // Paikallisessa kehityksessä osoitteen voi vaihtaa: http://localhost:8080/?api=http://localhost:8787/gigs
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    var override = new URLSearchParams(location.search).get('api');
+    if (override) API_URL = override;
+  }
+  var CONFIGURED = API_URL.indexOf('REPLACE-ME') === -1;
+
+  var WEEKDAYS = ['su', 'ma', 'ti', 'ke', 'to', 'pe', 'la'];
+  var FIELD_LABELS = { date: 'Päivä', time: 'Kellonaika', artist: 'Kuka esiintyy', venue: 'Paikka', city: 'Kaupunki', url: 'Linkki', media: 'Musiikki tai video', note: 'Lisätietoa' };
+  // Soittimet: vain nämä osoitteet upotetaan (Worker rakentaa osoitteen, tämä on toinen lukko).
+  var PLAYERS = {
+    'www.youtube-nocookie.com': { label: 'YouTube', ratio: true, allow: 'accelerometer; clipboard-write; encrypted-media; picture-in-picture; web-share' },
+    'open.spotify.com': { label: 'Spotify', height: 152, allow: 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture' },
+    'w.soundcloud.com': { label: 'SoundCloud', height: 166, allow: 'autoplay' }
+  };
+
+  var listEl = document.getElementById('gigs');
+  var statusEl = document.getElementById('gigs-status');
+  var form = document.getElementById('gig-form');
+  var submitBtn = document.getElementById('gig-submit');
+  var formStatus = document.getElementById('form-status');
+
+  // Käyttäjän teksti menee aina textContentilla, ei koskaan innerHTML:llä.
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function fmtDate(iso) {
+    var p = iso.split('-');
+    var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+    return WEEKDAYS[d.getUTCDay()] + ' ' + (+p[2]) + '.' + (+p[1]) + '.' + p[0];
+  }
+
+  function playerFor(src) {
+    try {
+      var u = new URL(src);
+      return u.protocol === 'https:' && PLAYERS.hasOwnProperty(u.hostname) ? PLAYERS[u.hostname] : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function openPlayer(li, btn, src, info) {
+    var box = el('div', 'gig-player');
+    if (info.ratio) box.style.aspectRatio = '16 / 9';
+    else box.style.height = info.height + 'px';
+    var f = document.createElement('iframe');
+    f.src = src;
+    f.title = info.label;
+    f.allow = info.allow;
+    f.referrerPolicy = 'strict-origin-when-cross-origin';
+    f.setAttribute('allowfullscreen', '');
+    f.style.cssText = 'width:100%;height:100%;border:0;display:block';
+    box.appendChild(f);
+    li.appendChild(box);
+    btn.remove();
+  }
+
+  function renderGig(g) {
+    var li = el('li', 'gig');
+
+    var when = el('div', 'gig-when');
+    when.appendChild(el('span', 'gig-date', fmtDate(g.date)));
+    if (g.time) when.appendChild(el('span', 'gig-time', 'klo ' + g.time));
+    li.appendChild(when);
+
+    var what = el('div', 'gig-what');
+    what.appendChild(el('div', 'gig-artist', g.artist));
+    what.appendChild(el('div', 'gig-place', g.venue + ' · ' + g.city));
+    if (g.note) what.appendChild(el('div', 'gig-note', g.note));
+    li.appendChild(what);
+
+    if (g.url && /^https:\/\//.test(g.url)) {
+      var a = el('a', 'gig-link', 'Info');
+      a.href = g.url;
+      a.target = '_blank';
+      a.rel = 'nofollow ugc noopener noreferrer';
+      li.appendChild(a);
+    } else {
+      li.appendChild(el('span'));
+    }
+
+    var info = g.embed ? playerFor(g.embed) : null;
+    if (info) {
+      // Soitin ladataan vasta napista: ei kolmannen osapuolen pyyntöjä ennen sitä.
+      var btn = el('button', 'play', '▶ Kuuntele (' + info.label + ')');
+      btn.type = 'button';
+      btn.addEventListener('click', function () { openPlayer(li, btn, g.embed, info); });
+      var slot = el('div', 'gig-play');
+      slot.appendChild(btn);
+      li.appendChild(slot);
+    }
+    return li;
+  }
+
+  function renderGigs(gigs) {
+    var items = gigs.map(renderGig);
+    listEl.replaceChildren.apply(listEl, items);
+    statusEl.textContent = gigs.length ? '' : 'Ei tulevia keikkoja juuri nyt. Lisää ensimmäinen alta!';
+  }
+
+  function loadGigs() {
+    if (!CONFIGURED) {
+      statusEl.textContent = 'Keikkalista ei ole vielä käytössä.';
+      return Promise.resolve();
+    }
+    return fetch(API_URL, { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) { renderGigs(d.gigs || []); })
+      .catch(function () { statusEl.textContent = 'Keikkalistaa ei saatu ladattua juuri nyt.'; });
+  }
+
+  function setFormStatus(msg, isError) {
+    formStatus.textContent = msg;
+    formStatus.className = 'form-status' + (isError ? ' err' : '');
+  }
+
+  // Päivän valinta alkaa tästä päivästä (mukavuus; palvelin tarkistaa aina).
+  form.elements.date.min = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!CONFIGURED) { setFormStatus('Lomake ei ole vielä käytössä.', true); return; }
+    var data = {};
+    new FormData(form).forEach(function (v, k) { data[k] = v; });
+    submitBtn.disabled = true;
+    setFormStatus('Lähetetään…', false);
+
+    fetch(API_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (body) { return { status: r.status, body: body }; });
+      })
+      .then(function (res) {
+        if (res.status === 201) {
+          form.reset();
+          setFormStatus('Kiitos! Keikka on lisätty.', false);
+          return loadGigs();
+        }
+        if (res.status === 400 && res.body.fields) {
+          setFormStatus(Object.keys(res.body.fields).map(function (k) { return (FIELD_LABELS[k] || k) + ': ' + res.body.fields[k]; }).join(' '), true);
+        } else if (res.status === 429) {
+          setFormStatus('Liikaa ilmoituksia juuri nyt. Yritä hetken päästä uudelleen.', true);
+        } else {
+          setFormStatus('Lähetys epäonnistui. Yritä hetken päästä uudelleen.', true);
+        }
+      })
+      .catch(function () { setFormStatus('Lähetys epäonnistui. Tarkista verkkoyhteys ja yritä uudelleen.', true); })
+      .then(function () { submitBtn.disabled = false; });
+  });
+
+  loadGigs();
+})();
+</script>
+</body>
+</html>

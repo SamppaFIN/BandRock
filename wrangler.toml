@@ -1,0 +1,16 @@
+# Keikkalistan Worker. Aja komennot projektin juuresta: `npm run deploy:worker`
+# (kirjautuminen kerran: `npx wrangler login`).
+# database_id tulee komennosta `npx wrangler d1 create nekalabama-gigs` (README kohta 2).
+name = "nekalabama-gigs"
+main = "worker/src/index.js"
+compatibility_date = "2026-09-08"
+
+[vars]
+# Sivut, joilta selain saa kutsua Workeria (pilkulla erotettuna).
+ALLOWED_ORIGINS = "https://samppafin.github.io"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "nekalabama-gigs"
+database_id = "REPLACE-WITH-ID-FROM-d1-create"
+migrations_dir = "worker/migrations"

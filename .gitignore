@@ -1,0 +1,9 @@
+node_modules/
+.wrangler/
+.dev.vars
+*.log
+
+# Alkuperäiset lähdetiedostot ja mallipohja: eivät kuulu julkaisuun (ks. CLAUDE.md)
+Madrid_kansi.jpg
+Ray Jone & Nekalabama Thunderstorm.html
+claude_newproject.md

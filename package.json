@@ -1,0 +1,13 @@
+{
+  "name": "nekalabama",
+  "private": true,
+  "type": "module",
+  "description": "Ray Jone & The Nekalabama Thunderstorm: bändisivu (GitHub Pages) ja keikkalista (Cloudflare Worker + D1).",
+  "scripts": {
+    "test": "node --test",
+    "dev:worker": "npx wrangler@4 dev",
+    "deploy:worker": "npx wrangler@4 deploy",
+    "migrate:local": "npx wrangler@4 d1 migrations apply DB --local",
+    "migrate:remote": "npx wrangler@4 d1 migrations apply DB --remote"
+  }
+}
