@@ -61,7 +61,7 @@ Worker       → npm run deploy:worker (käsin, npx wrangler login) — kuten Kl
 wrangler.toml    worker/{src/{index.js,validate.js,media.js},migrations/}    test/    package.json    README.md
 ```
 
-**Versiot:** Node 22, `actions/checkout@v7`, `actions/setup-node@v7`. Pages-actionit `configure-pages@v5`, `upload-pages-artifact@v3`, `deploy-pages@v4` (toimivat Klitoritarissa). Ei riippuvuuksia, testit `node:test`. Wrangler ajetaan `npx wrangler@4` (ei asennettuna riippuvuutena).
+**Versiot:** Node 22, `actions/checkout@v7`, `actions/setup-node@v7`. Pages-actionit `configure-pages@v5`, `upload-pages-artifact@v3`, `deploy-pages@v4` (toimivat Klitoritarissa). Testit `node:test` (ei riippuvuuksia). `wrangler` on devDependency (`npm install`), jotta `npx` ei tarvitse lukittavaa välimuistia.
 
 ## 4. Epicit ja tiketit
 
@@ -97,7 +97,7 @@ wrangler.toml    worker/{src/{index.js,validate.js,media.js},migrations/}    tes
     { "id": 11, "epic": "julkaisu", "nimi": "GitHub Actions → Pages -julkaisu", "effort": "M", "riippuvuudet": [1], "status": "review",
       "acceptance_criteria": ["Push main → testit → julkaisu GitHub Pagesiin", "Pull request ajaa vain testit", "Epäonnistunut testi estää julkaisun", "Workflow on kirjoitettu mutta ei vielä ajettu GitHubissa"], "valmius": 70 },
     { "id": 12, "epic": "julkaisu", "nimi": "Cloudflare-käyttöönotto ja README", "effort": "M", "riippuvuudet": [10, 11], "status": "in_progress",
-      "acceptance_criteria": ["Infinite: npx wrangler login, D1 luotu (wrangler d1 create), database_id wrangler.toml:iin, migraatio ajettu (--remote), wrangler deploy ajettu", "Workerin osoite API_URL-vakioon sivulla", "GitHubin Settings → Pages → Source: GitHub Actions (repo julkinen)", "README: ilmoituksen lisäys, piilotus ja julkaisu (kirjoitettu)", "Sivu aukeaa osoitteessa samppafin.github.io/Nekalamaba ja lista latautuu Workerilta"], "valmius": 30 }
+      "acceptance_criteria": ["Infinite: npm install, npx wrangler login, D1 luotu (wrangler d1 create), database_id wrangler.toml:iin, migraatio ajettu (--remote), wrangler deploy ajettu", "Workerin osoite API_URL-vakioon sivulla", "GitHubin Settings → Pages → Source: GitHub Actions (repo julkinen)", "README: ilmoituksen lisäys, piilotus ja julkaisu (kirjoitettu)", "Sivu aukeaa osoitteessa samppafin.github.io/Nekalamaba ja lista latautuu Workerilta"], "valmius": 30 }
   ]
 }
 ```
@@ -180,6 +180,7 @@ Jokainen vastaus alkaa lyhyellä otsikolla. Se on tehty luettavaksi nopeasti.
 - Paikallisessa testissä portti 8787 voi olla varattu vanhalla `workerd`-prosessilla (esim. Klitoritarin). Käytä toista porttia (`--port 8799`) äläkä sammuta vierasta prosessia.
 - Skandit testeissä: älä lähetä `curl -d 'ä'` Bashista Windowsissa (merkistö hajoaa). Tee testi Node-tiedostosta, joka on tallennettu UTF-8:na.
 - Älä suodata testituloksia `grep`illä niin, että virheet katoavat. Katso koko tuloste, kun tulos on tyhjä.
+- `npx wrangler` kaatui Windowsissa `EBUSY`-virheeseen, koska vanhat `wrangler dev` -prosessit lukitsivat npx-välimuistin. Ratkaisu: `wrangler` asennettu projektiin (`npm install`), ei `npx wrangler@4`.
 - Headless Chrome ei tee alle noin 500 px leveää ikkunaa. Testaa kapea näkymä iframessa, jonka leveys on 390 px.
 
 🎸

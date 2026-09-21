@@ -16,6 +16,12 @@ Tarvitset Cloudflare-tilin ja `main`-haaran GitHubissa. Ilmaistili riittää. Cl
 
 Aja kaikki `npx wrangler …` -komennot **projektin juuresta**, jossa `wrangler.toml` on. Muualta ajettuna `wrangler` ei löydä asetuksia ja alkaa arvailla projektia.
 
+**0. Asenna työkalut**
+```
+npm install
+```
+Tämä asentaa `wrangler`in projektin `node_modules/`-kansioon. Sen jälkeen `npx wrangler …` käyttää projektin omaa kopiota (ei lataa mitään välimuistiin, joten Windowsin `EBUSY`-lukitusvirhe ei tule vastaan).
+
 **1. Kirjaudu Cloudflareen**
 ```
 npx wrangler login
