@@ -40,7 +40,16 @@
 
 **Lähtötilanne:** alkuperäinen sivu on Claude Designin bundle (`Ray Jone & Nekalabama Thunderstorm.html`), joka nojaa omaan `<x-dc>`-runtimeen. Sitä ei tarjoilla sellaisenaan. Kuvat ja fontit on purettu kansioon `public/` (logo, Madrid-kansi, bändikuva, Gentium Basic latin). Alkuperäistä HTML:ää ja `Madrid_kansi.jpg`:tä (4 Mt) ei muokata eikä commitoida.
 
-**Ulkoasu:** musta tausta `#000`, korostus `#f5b122`, fontti Gentium Basic (serif), ohuet valkoiset reunat `rgba(255,255,255,0.22)`, pienet isot-kirjaimiset otsikot leveällä `letter-spacing`illa, otsikot muotoa "Kuuntele · Listen". Uudet osiot tehdään samalla tyylillä.
+**Ulkoasu (uusittu 22.9.2026 AI-Koulun ui-ux-oppien pohjalta):** musta tausta, korostus `#f5b122`, fontti Gentium Basic (serif), pienet isot-kirjaimiset otsikot leveällä `letter-spacing`illa, otsikot muotoa "Kuuntele · Listen".
+
+- **Tokenit** `:root`-lohkossa OKLCH-muodossa. Älä kirjoita värejä suoraan sääntöihin.
+- **Kerrokset:** `@layer base, layout, components, state`. Uusi sääntö menee oikeaan kerrokseen.
+- **Lasi** (`.glass`): `backdrop-filter: blur(16px) saturate(1.3)` + läpikuultava pinta + `::before`-hiusviiva. Käytössä korteissa, valikossa ja ikkunassa.
+- **Metalli:** kromiliukuväri nimessä (`background-clip: text`), kultaliukuväri napeissa, `--edge`-korostus lasin reunassa. Pieni tehoste, ei koko pintaa.
+- **Varatilat pakollisia:** `@supports not (backdrop-filter)`, `prefers-reduced-transparency`, `prefers-reduced-motion`, `prefers-contrast: more`.
+- **Saavutettavuus:** kosketuskohteet 44 px, `:focus-visible` 2 px, kontrasti ≥ 4,5:1, ohituslinkki, maamerkit (`nav`/`main`/`footer`), virheessä aina ⚠-merkki eikä pelkkä väri. axe-core ilman rikkomuksia.
+- **Tilat:** lataus = luuranko, tyhjä = tyhjä (Infiniten päätös), virhe = ohje mitä tehdä, onnistuminen = vihreä palkki.
+- **Kenttätarkistus** tehdään kun kenttä menettää fokuksen, ei kesken kirjoittamisen.
 
 ## 3. Arkkitehtuuri
 
@@ -183,6 +192,11 @@ Jokainen vastaus alkaa lyhyellä otsikolla. Se on tehty luettavaksi nopeasti.
 - Skandit testeissä: älä lähetä `curl -d 'ä'` Bashista Windowsissa (merkistö hajoaa). Tee testi Node-tiedostosta, joka on tallennettu UTF-8:na.
 - Älä suodata testituloksia `grep`illä niin, että virheet katoavat. Katso koko tuloste, kun tulos on tyhjä.
 - `npx wrangler` kaatui Windowsissa `EBUSY`-virheeseen, koska vanhat `wrangler dev` -prosessit lukitsivat npx-välimuistin. Ratkaisu: `wrangler` asennettu projektiin (`npm install`), ei `npx wrangler@4`.
+- `width`/`height`-attribuutit kuvissa asettavat myös CSS-korkeuden, joka kumoaa `aspect-ratio`n ja venyttää kuvan. Kuville tarvitaan `height: auto`.
+- Oma `display`-sääntö kumoaa `hidden`-attribuutin. Tarvitaan `[hidden] { display: none !important }`.
+- `flex-basis` koskee pääakselia: pystysuunnassa se asettaa **korkeuden**, ja `aspect-ratio` venyttää silloin leveyden. Rivikohtaiset flex-arvot vain container queryn sisään.
+- Spotifyn artistiupotus jättää tyhjän kappalelistan kohdalle valkoista tilaa, kun kappaleita on yksi. Käytössä Spotifyn oma 152 px.
+- Testit eivät nähneet näitä kolmea vikaa — kuvakaappaus näki. Katso kuvat aina itse.
 - Headless Chrome ei tee alle noin 500 px leveää ikkunaa. Testaa kapea näkymä iframessa, jonka leveys on 390 px.
 
 🎸
