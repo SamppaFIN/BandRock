@@ -31,6 +31,8 @@
   "tila": "toteutus",
   "repo": "https://github.com/SamppaFIN/Nekalamaba.git",
   "haara": "main",
+  "spotify_artisti": "https://open.spotify.com/artist/6MZ5sOhKDci1bYweyqJBj7",
+  "osoite": "https://samppafin.github.io/Nekalamaba/ (livenä 21.9.2026; keikkalista odottaa Workerin julkaisua)",
   "hosting": "Sivu: GitHub Pages. Data: Cloudflare Worker + D1.",
   "julkaisu": "Sivu: GitHub Actions → Pages. Worker: wrangler deploy käsin (kuten Klitoritarissa)."
 }
@@ -68,18 +70,18 @@ wrangler.toml    worker/{src/{index.js,validate.js,media.js},migrations/}    tes
 ```json
 {
   "epicit": [
-    { "id": "sivu",     "nimi": "🎸 Bändisivu",              "tiketit": [1, 2, 3, 4], "valmius": 93 },
-    { "id": "keikat",   "nimi": "🎤 Keikkailmoitukset",      "tiketit": [5, 6, 7],    "valmius": 95 },
+    { "id": "sivu",     "nimi": "🎸 Bändisivu",              "tiketit": [1, 2, 3, 4], "valmius": 100 },
+    { "id": "keikat",   "nimi": "🎤 Keikkailmoitukset",      "tiketit": [5, 6, 7],    "valmius": 98 },
     { "id": "suojaus",  "nimi": "🛡️ Suojaus ja piilotus",    "tiketit": [8, 9],       "valmius": 35 },
-    { "id": "julkaisu", "nimi": "🚀 Julkaisu",               "tiketit": [10, 11, 12], "valmius": 67 }
+    { "id": "julkaisu", "nimi": "🚀 Julkaisu",               "tiketit": [10, 11, 12], "valmius": 83 }
   ],
   "tiketit": [
-    { "id": 1, "epic": "sivu", "nimi": "Portaa sivu tavalliseksi HTML:ksi", "effort": "S", "riippuvuudet": [], "status": "review",
-      "acceptance_criteria": ["Ei riippuvuutta Claude Designin runtimeen", "Kuvat ja fontit tiedostoina kansiossa public/", "Sivu näyttää samalta kuin alkuperäinen (verrattu kuvakaappauksin, myös 390 px:n leveydellä)", "Toimii alipolulla /Nekalamaba/ (polut suhteellisia; todennetaan julkaisun jälkeen)"], "valmius": 90 },
+    { "id": 1, "epic": "sivu", "nimi": "Portaa sivu tavalliseksi HTML:ksi", "effort": "S", "riippuvuudet": [], "status": "done",
+      "acceptance_criteria": ["Ei riippuvuutta Claude Designin runtimeen", "Kuvat ja fontit tiedostoina kansiossa public/", "Sivu näyttää samalta kuin alkuperäinen (verrattu kuvakaappauksin, myös 390 px:n leveydellä)", "Toimii alipolulla /Nekalamaba/ (todennettu livenä 21.9.2026: sivu, kuvat ja fontit vastaavat 200)"], "valmius": 100 },
     { "id": 2, "epic": "sivu", "nimi": "Iso logo otsikoksi", "effort": "S", "riippuvuudet": [1], "status": "done",
       "acceptance_criteria": ["Logo on sivun otsikko ja selvästi nykyistä isompi", "Toimii puhelimella"], "valmius": 100 },
-    { "id": 3, "epic": "sivu", "nimi": "YouTube ja soittimet", "effort": "S", "riippuvuudet": [1], "status": "review",
-      "acceptance_criteria": ["Bändin video toistuu sivulla eikä vie pois", "Ilmoitukseen voi liittää YouTube-, Spotify- tai SoundCloud-linkin ja soitin aukeaa napista", "Toisto testattu julkaistulla https-sivulla (file://-osoitteessa YouTube ei toimi) — odottaa julkaisua"], "valmius": 80 },
+    { "id": 3, "epic": "sivu", "nimi": "YouTube ja soittimet", "effort": "S", "riippuvuudet": [1], "status": "done",
+      "acceptance_criteria": ["Bändin video toistuu sivulla eikä vie pois", "Ilmoitukseen voi liittää YouTube-, Spotify- tai SoundCloud-linkin ja soitin aukeaa napista", "Bändin Spotify-artistisoitin näkyy Kuuntele-osiossa ja Spotify-linkki Bookingissa (todennettu selaimella)", "YouTube-video latautuu livenä https-osoitteessa (todennettu 21.9.2026; file://-osoitteessa YouTube ei toimi)"], "valmius": 100 },
     { "id": 4, "epic": "sivu", "nimi": "Sähköposti Booking-osioon", "effort": "S", "riippuvuudet": [1], "status": "done",
       "acceptance_criteria": ["nekalabama@gmail.com on mailto-linkkinä puhelinnumeron vieressä"], "valmius": 100 },
     { "id": 5, "epic": "keikat", "nimi": "D1-taulu ja migraatio", "effort": "S", "riippuvuudet": [], "status": "done",
@@ -87,17 +89,17 @@ wrangler.toml    worker/{src/{index.js,validate.js,media.js},migrations/}    tes
     { "id": 6, "epic": "keikat", "nimi": "Worker-API: GET ja POST /gigs", "effort": "M", "riippuvuudet": [5], "status": "done",
       "acceptance_criteria": ["GET palauttaa valmiin listan: vain status=visible ja date >= tänään (Europe/Helsinki), enintään 200, aikajärjestyksessä", "POST validoi ja siivoaa kentät ja pituudet palvelimella ja hylkää virheelliset (400)", "Vain https-linkit sallitaan; soitinlinkeistä rakennetaan upotusosoite palvelimella", "CORS sallii vain Pagesin osoitteen", "Tuntiraja 30 ilmoitusta (429)", "Validoinnin ja soitintunnistuksen testit läpi (18 kpl)"], "valmius": 100 },
     { "id": 7, "epic": "keikat", "nimi": "Lomake ja lista sivulle", "effort": "M", "riippuvuudet": [1, 6], "status": "review",
-      "acceptance_criteria": ["Kuka tahansa voi lähettää ilmoituksen ilman kirjautumista", "Sivu hakee listan Workerilta (API_URL-vakio) ja uusi ilmoitus näkyy listassa", "Käyttäjän teksti näytetään vain textContent:llä, linkeissä rel=\"nofollow ugc noopener\"", "Tyhjä lista näyttää 'Ei tulevia keikkoja'", "Lomakkeen lähetys selaimessa testataan julkaistulla sivulla (rajapinta ja lista todennettu paikallisesti)"], "valmius": 85 },
+      "acceptance_criteria": ["Kuka tahansa voi lähettää ilmoituksen ilman kirjautumista", "Sivu hakee listan Workerilta (API_URL-vakio) ja uusi ilmoitus näkyy listassa", "Käyttäjän teksti näytetään vain textContent:llä, linkeissä rel=\"nofollow ugc noopener\"", "Tyhjä lista näkyy tyhjänä, ilman tekstiä", "Lisää keikka aukeaa napin takaa ikkunassa (ei lomaketta sivulla)", "Lähetys, virheet, ä/ö, HTML-yritys, soittimen avaus ja 390 px:n näkymä todennettu selaimella paikallisesti (26 tarkistusta); julkaistulla sivulla odottaa Workerin julkaisua"], "valmius": 95 },
     { "id": 8, "epic": "suojaus", "nimi": "Turnstile-botintorjunta", "effort": "M", "riippuvuudet": [6, 7], "status": "todo",
       "acceptance_criteria": ["Lomakkeessa on Turnstile-widget", "Worker varmistaa tokenin Siteverifyllä ennen tallennusta", "Ilman kelvollista tokenia POST palauttaa 403"], "valmius": 0 },
     { "id": 9, "epic": "suojaus", "nimi": "Ilmoituksen piilotus", "effort": "S", "riippuvuudet": [6], "status": "review",
       "acceptance_criteria": ["status='hidden' poistaa ilmoituksen listasta (toteutettu SQL-suodatuksena, ei vielä testattu erikseen)", "README kertoo miten piilotus tehdään"], "valmius": 70 },
     { "id": 10, "epic": "julkaisu", "nimi": "wrangler.toml", "effort": "S", "riippuvuudet": [6], "status": "done",
       "acceptance_criteria": ["Projektin juuressa: name, main=worker/src/index.js, compatibility_date, ALLOWED_ORIGINS ja D1-sidonta DB (ei salaisuuksia)", "npm run deploy:worker -- --dry-run läpi juuresta"], "valmius": 100 },
-    { "id": 11, "epic": "julkaisu", "nimi": "GitHub Actions → Pages -julkaisu", "effort": "M", "riippuvuudet": [1], "status": "review",
-      "acceptance_criteria": ["Push main → testit → julkaisu GitHub Pagesiin", "Pull request ajaa vain testit", "Epäonnistunut testi estää julkaisun", "Workflow on kirjoitettu mutta ei vielä ajettu GitHubissa"], "valmius": 70 },
+    { "id": 11, "epic": "julkaisu", "nimi": "GitHub Actions → Pages -julkaisu", "effort": "M", "riippuvuudet": [1], "status": "done",
+      "acceptance_criteria": ["Push main → testit → julkaisu GitHub Pagesiin", "Pull request ajaa vain testit", "Epäonnistunut testi estää julkaisun", "Ajo #2 (57182f9) meni läpi 21.9.2026 ja sivu on livenä. Ajo #1 kaatui, koska Pages ei ollut vielä päällä."], "valmius": 100 },
     { "id": 12, "epic": "julkaisu", "nimi": "Cloudflare-käyttöönotto ja README", "effort": "M", "riippuvuudet": [10, 11], "status": "in_progress",
-      "acceptance_criteria": ["Infinite: npm install, npx wrangler login, D1 luotu (wrangler d1 create), database_id wrangler.toml:iin, migraatio ajettu (--remote), wrangler deploy ajettu", "Workerin osoite API_URL-vakioon sivulla", "GitHubin Settings → Pages → Source: GitHub Actions (repo julkinen)", "README: ilmoituksen lisäys, piilotus ja julkaisu (kirjoitettu)", "Sivu aukeaa osoitteessa samppafin.github.io/Nekalamaba ja lista latautuu Workerilta"], "valmius": 30 }
+      "acceptance_criteria": ["Infinite: npm install, npx wrangler login, D1 luotu (wrangler d1 create), database_id wrangler.toml:iin, migraatio ajettu (--remote), wrangler deploy ajettu", "Workerin osoite API_URL-vakioon sivulla", "GitHubin Settings → Pages → Source: GitHub Actions (repo julkinen)", "README: ilmoituksen lisäys, piilotus ja julkaisu (kirjoitettu)", "Sivu aukeaa osoitteessa samppafin.github.io/Nekalamaba (tehty, Pages päällä) ja lista latautuu Workerilta (odottaa Workerin julkaisua)"], "valmius": 50 }
   ]
 }
 ```
@@ -114,13 +116,13 @@ wrangler.toml    worker/{src/{index.js,validate.js,media.js},migrations/}    tes
 - Logo suurennetaan (ei erillistä tiedostoa). Https-linkit sallitaan.
 - Ilmoituksiin saa liittää YouTube-, Spotify- tai SoundCloud-linkin. Soitin näytetään ilmoituksessa.
 - Nopeus ennen viimeistelyä: sivu ylös ensin.
+- "Lisää keikka" on napin takana (ikkuna), ei lomakkeena sivulla. Jos keikkoja ei ole, lista näkyy tyhjänä ilman tekstiä.
+- Bändin oma Spotify-artistisoitin ja -linkki lisätty (artisti `6MZ5sOhKDci1bYweyqJBj7`, vahvistettu Spotifyn oEmbedillä).
 
 **Avoimet**
 - Turnstile ennen kuin sivua jaetaan laajemmin (tiketti 8).
 - Oma domain (nyt `samppafin.github.io` ja `workers.dev`).
 - Bandcamp-, Apple Music- ja Vimeo-soittimet, jos halutaan.
-- Bändin oman Madrid-osion Spotify-soitin, jos linkki tulee.
-
 ## 6. Vastausprotokolla
 
 Jokainen vastaus alkaa lyhyellä otsikolla. Se on tehty luettavaksi nopeasti.

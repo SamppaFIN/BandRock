@@ -27,6 +27,7 @@ p { margin: 0; }
 .label { font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: #f5b122; }
 .rule { height: 1px; background: rgba(255, 255, 255, 0.22); }
 .muted { color: rgba(255, 255, 255, 0.7); font-style: italic; font-size: 16px; }
+.muted:empty { display: none; }
 
 .hero { padding: clamp(26px, 5vw, 44px) 24px 30px; display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
 .logo { display: block; width: clamp(190px, 42vw, 320px); height: auto; }
@@ -52,6 +53,8 @@ p { margin: 0; }
 .cover .kind { font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.58); }
 .video { flex: 1 1 300px; min-width: 0; aspect-ratio: 16 / 9; background: #0b0b0b; }
 .video iframe { width: 100%; height: 100%; border: 0; display: block; }
+.spotify { width: 100%; height: 152px; }
+.spotify iframe { width: 100%; height: 100%; border: 0; display: block; }
 
 .gigs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .gig { display: grid; grid-template-columns: 150px 1fr auto; gap: 6px 18px; padding: 16px 0; border-top: 1px solid rgba(255, 255, 255, 0.14); align-items: baseline; }
@@ -79,8 +82,18 @@ p { margin: 0; }
 .btn { font: inherit; font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase; color: #000; background: #f5b122; border: 0; padding: 12px 22px; cursor: pointer; justify-self: start; }
 .btn:hover { background: #fff; }
 .btn:disabled { opacity: 0.5; cursor: default; }
+.btn.small { font-size: 13px; padding: 9px 16px; }
+.btn.ghost { color: #fff; background: none; border: 1px solid rgba(255, 255, 255, 0.3); }
+.btn.ghost:hover { background: none; border-color: #fff; }
+.notice { color: #f5b122; font-size: 17px; }
+.notice:empty { display: none; }
+.actions { grid-column: 1 / -1; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 .form-status { grid-column: 1 / -1; font-size: 16px; }
 .form-status.err { color: #ff8a80; }
+
+.dialog { padding: 0; color: #fff; background: #000; border: 1px solid rgba(255, 255, 255, 0.22); width: min(640px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto; font: inherit; }
+.dialog::backdrop { background: rgba(0, 0, 0, 0.82); }
+.dialog-inner { padding: clamp(20px, 4vw, 32px); display: flex; flex-direction: column; gap: 20px; }
 
 .booking { display: flex; flex-wrap: wrap; gap: 22px 40px; align-items: flex-end; justify-content: space-between; }
 .col { display: flex; flex-direction: column; gap: 4px; }
@@ -146,16 +159,25 @@ p { margin: 0; }
           <iframe src="https://www.youtube-nocookie.com/embed/GKlZrIftTZ8" title="Madrid" allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" loading="lazy"></iframe>
         </div>
       </div>
+      <div class="spotify">
+        <iframe src="https://open.spotify.com/embed/artist/6MZ5sOhKDci1bYweyqJBj7?theme=0" title="Spotify: Ray Jone &amp; The Nekalabama Thunderstorm" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+      </div>
     </section>
 
     <section class="card pad" id="keikat">
-      <div class="label">Keikat · Gigs</div>
-      <p class="muted" id="gigs-status" aria-live="polite">Ladataan keikkoja…</p>
+      <div class="head">
+        <div class="label">Keikat · Gigs</div>
+        <button class="btn small" type="button" id="add-open">+ Lisää keikka</button>
+      </div>
+      <p class="notice" id="notice" role="status"></p>
+      <p class="muted" id="gigs-status" aria-live="polite"></p>
       <noscript><p class="muted">Keikkalista vaatii JavaScriptin.</p></noscript>
       <ol class="gigs" id="gigs"></ol>
+    </section>
 
-      <div class="rule"></div>
-      <div class="label">Lisää keikka · Add a gig</div>
+    <dialog class="dialog" id="gig-dialog" aria-labelledby="dlg-title">
+      <div class="dialog-inner">
+      <div class="label" id="dlg-title">Lisää keikka · Add a gig</div>
       <form class="form" id="gig-form">
         <label class="field"><span class="t">Päivä *</span><input type="date" name="date" required></label>
         <label class="field"><span class="t">Kellonaika</span><input type="time" name="time"></label>
@@ -167,10 +189,14 @@ p { margin: 0; }
         <label class="field full"><span class="t">Musiikki tai video</span><input type="url" name="media" maxlength="300" placeholder="https://open.spotify.com/track/…">
           <span class="hint">YouTube-, Spotify- tai SoundCloud-linkki. Soitin näkyy ilmoituksessa.</span></label>
         <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
-        <button class="btn" type="submit" id="gig-submit">Lisää keikka</button>
+        <div class="actions">
+          <button class="btn" type="submit" id="gig-submit">Lisää keikka</button>
+          <button class="btn ghost" type="button" id="gig-cancel">Peruuta</button>
+        </div>
         <p class="form-status" id="form-status" role="status"></p>
       </form>
-    </section>
+      </div>
+    </dialog>
 
     <section class="card pad">
       <div class="label">Keikkamyynti · Booking</div>
@@ -186,6 +212,7 @@ p { margin: 0; }
         <div class="social">
           <a href="https://www.facebook.com/profile.php?id=61590496347140" target="_blank" rel="noreferrer">Facebook</a>
           <a href="https://www.instagram.com/nekalabama_music_official/" target="_blank" rel="noreferrer">Instagram</a>
+          <a href="https://open.spotify.com/artist/6MZ5sOhKDci1bYweyqJBj7" target="_blank" rel="noreferrer">Spotify</a>
           <a href="https://www.youtube.com/watch?v=GKlZrIftTZ8" target="_blank" rel="noreferrer">YouTube</a>
         </div>
       </div>
@@ -225,6 +252,10 @@ p { margin: 0; }
   var listEl = document.getElementById('gigs');
   var statusEl = document.getElementById('gigs-status');
   var form = document.getElementById('gig-form');
+  var dialog = document.getElementById('gig-dialog');
+  var openBtn = document.getElementById('add-open');
+  var cancelBtn = document.getElementById('gig-cancel');
+  var notice = document.getElementById('notice');
   var submitBtn = document.getElementById('gig-submit');
   var formStatus = document.getElementById('form-status');
 
@@ -307,14 +338,11 @@ p { margin: 0; }
   function renderGigs(gigs) {
     var items = gigs.map(renderGig);
     listEl.replaceChildren.apply(listEl, items);
-    statusEl.textContent = gigs.length ? '' : 'Ei tulevia keikkoja juuri nyt. Lisää ensimmäinen alta!';
+    statusEl.textContent = '';
   }
 
   function loadGigs() {
-    if (!CONFIGURED) {
-      statusEl.textContent = 'Keikkalista ei ole vielä käytössä.';
-      return Promise.resolve();
-    }
+    if (!CONFIGURED) return Promise.resolve();
     return fetch(API_URL, { cache: 'no-store' })
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(function (d) { renderGigs(d.gigs || []); })
@@ -328,6 +356,15 @@ p { margin: 0; }
 
   // Päivän valinta alkaa tästä päivästä (mukavuus; palvelin tarkistaa aina).
   form.elements.date.min = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+
+  openBtn.addEventListener('click', function () {
+    notice.textContent = '';
+    setFormStatus('', false);
+    dialog.showModal();
+  });
+  cancelBtn.addEventListener('click', function () { dialog.close(); });
+  // Klikkaus ikkunan ulkopuolelle (taustaan) sulkee sen.
+  dialog.addEventListener('click', function (e) { if (e.target === dialog) dialog.close(); });
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -344,7 +381,9 @@ p { margin: 0; }
       .then(function (res) {
         if (res.status === 201) {
           form.reset();
-          setFormStatus('Kiitos! Keikka on lisätty.', false);
+          setFormStatus('', false);
+          dialog.close();
+          notice.textContent = 'Kiitos! Keikka on lisätty.';
           return loadGigs();
         }
         if (res.status === 400 && res.body.fields) {
