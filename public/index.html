@@ -116,9 +116,11 @@
       <p>Tällä koodilla muokkaat tai poistat sivun myöhemmin:</p>
       <div class="code-big" id="code-value">00000</div>
       <p class="code-warn">Koodia ei näytetä enää uudelleen eikä sitä voi palauttaa. Ota kuvakaappaus tai kirjoita se ylös.</p>
+      <p class="muted">Sivusi: <a id="code-page-link" href="."></a></p>
     </div>
     <div class="actions">
-      <button class="btn" type="button" id="code-done">Selvä, jatka</button>
+      <button class="btn ghost" type="button" id="code-copy">Kopioi koodi</button>
+      <button class="btn" type="button" id="code-done">Avaa sivu</button>
     </div>
   </div>
 </dialog>
@@ -179,6 +181,7 @@
       <label class="field" data-for="city"><span class="t">Kaupunki</span><input type="text" name="city" maxlength="60" autocomplete="off"></label>
       <label class="field full" data-for="note"><span class="t">Lisätietoa</span><input type="text" name="note" maxlength="300" placeholder="esim. vapaa pääsy, ovet 19"></label>
       <label class="field full" data-for="url"><span class="t">Info- tai lippulinkki</span><input type="url" name="url" maxlength="300" placeholder="https://"><span class="err">⚠ <span class="msg"></span></span></label>
+      <label class="field full" data-for="code"><span class="t">Sivun 5-merkkinen koodi *</span><input type="text" name="code" required maxlength="5" autocomplete="off" autocapitalize="characters"><span class="err">⚠ <span class="msg"></span></span></label>
       <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
       <div class="actions">
         <button class="btn" type="submit" id="gig-submit">Lisää keikka</button>
@@ -195,9 +198,19 @@ import { renderDetail, renderCard, renderCreateCard, slugify, fmtDateISO, el } f
 
 restoreFromRedirect();
 
+// Worker + R2 -rajapinta. Vaihda tähän Workerin osoite, kun se on julkaistu (README).
+// Paikallisessa kehityksessä: http://localhost:8080/?api=http://localhost:8799/api
+var API_URL = 'https://bandrock.REPLACE-ME.workers.dev/api';
+if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+  var override = new URLSearchParams(location.search).get('api');
+  if (override) API_URL = override;
+}
+var API_CONFIGURED = API_URL.indexOf('REPLACE-ME') === -1;
+
 var app = document.getElementById('app');
 var currentPoster = null;   // täysi data kun ollaan bändin sivulla
-var currentIndex = null;    // ruudukon summaus (data/index.json), välimuistissa
+var currentIndex = null;    // ruudukon summaus, välimuistissa
+var pendingEditCode = '';   // muistissa vaiheiden 1 ja 2 välillä, ei koskaan tallenneta mihinkään
 
 function setTitle(t) { document.getElementById('page-title').textContent = t; }
 
@@ -206,10 +219,16 @@ function focusMain() {
   if (h) { h.setAttribute('tabindex', '-1'); h.focus(); }
 }
 
-async function loadIndex() {
-  if (currentIndex) return currentIndex;
-  var res = await fetch('data/index.json', { cache: 'no-store' });
-  currentIndex = await res.json();
+async function loadIndex(fresh) {
+  if (currentIndex && !fresh) return currentIndex;
+  if (API_CONFIGURED) {
+    var res = await fetch(API_URL + '/posters', { cache: 'no-store' });
+    if (!res.ok) throw new Error(String(res.status));
+    currentIndex = (await res.json()).posters;
+  } else {
+    var res2 = await fetch('data/index.json', { cache: 'no-store' });
+    currentIndex = await res2.json();
+  }
   return currentIndex;
 }
 
@@ -314,7 +333,9 @@ async function showDetail(slug) {
 
   var poster;
   try {
-    var res = await fetch('data/' + encodeURIComponent(slug) + '.json', { cache: 'no-store' });
+    var res = API_CONFIGURED
+      ? await fetch(API_URL + '/posters/' + encodeURIComponent(slug), { cache: 'no-store' })
+      : await fetch('data/' + encodeURIComponent(slug) + '.json', { cache: 'no-store' });
     if (!res.ok) throw new Error('404');
     poster = await res.json();
   } catch (e) {
@@ -360,7 +381,10 @@ async function showDetail(slug) {
     addGigBtn.addEventListener('click', openGigDialog);
     gigsHead.appendChild(addGigBtn);
   }
-  if (poster.editCode) {
+  {
+    // Palvelin ei koskaan palauta editCode/codeHash-kenttää (vain vaiheen 1 staattinen
+    // esimerkkidata sisältää sen suoraan). Nappi näytetään siis aina — jokaisella
+    // ilmoituksella on oma koodinsa, vaikka tämä sivu ei sitä koskaan näe.
     var editWrap = el('div', 'next-cta');
     var editBtn = el('button', 'btn ghost', 'Muokkaa tätä sivua koodilla');
     editBtn.type = 'button';
@@ -415,23 +439,80 @@ document.getElementById('info-x').addEventListener('click', function () { infoDi
 document.getElementById('info-close').addEventListener('click', function () { infoDialog.close(); });
 infoDialog.addEventListener('click', function (e) { if (e.target === infoDialog) infoDialog.close(); });
 
-// ── Luo uusi bändi (ei vielä käytössä — odottaa Workeria) ────────────────
+// ── Luo uusi bändi ────────────────────────────────────────────────────────
 var createDialog = document.getElementById('create-dialog');
 var createForm = document.getElementById('create-form');
+var codeDialog = document.getElementById('code-dialog');
+var FIELD_LABELS = { title: 'Nimi', city: 'Kaupunki', tagline: 'Kuvaus', tags: 'Tyylilajit', email: 'Yhteystieto', media: 'Linkki', type: 'Tyyppi' };
+
 function openCreateDialog() {
   createForm.reset();
   document.getElementById('create-status').textContent = '';
   document.getElementById('create-status').className = 'form-status';
+  createForm.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
   createDialog.showModal();
 }
 document.getElementById('create-x').addEventListener('click', function () { createDialog.close(); });
 document.getElementById('create-cancel').addEventListener('click', function () { createDialog.close(); });
 createDialog.addEventListener('click', function (e) { if (e.target === createDialog) createDialog.close(); });
+
+function showCode(id, code) {
+  document.getElementById('code-value').textContent = code;
+  var link = document.getElementById('code-page-link');
+  link.href = pathFor(id);
+  link.textContent = location.origin + pathFor(id);
+  codeDialog.showModal();
+}
+document.getElementById('code-x').addEventListener('click', function () { codeDialog.close(); });
+document.getElementById('code-copy').addEventListener('click', function () {
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(document.getElementById('code-value').textContent);
+});
+document.getElementById('code-done').addEventListener('click', function () {
+  var id = document.getElementById('code-page-link').getAttribute('href');
+  codeDialog.close();
+  navigate(id.replace(SITE_BASE, ''));
+});
+
 createForm.addEventListener('submit', function (e) {
   e.preventDefault();
   var status = document.getElementById('create-status');
-  status.textContent = 'Uuden bändin luonti ei ole vielä käytössä — tulossa pian.';
-  status.className = 'form-status err';
+  createForm.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
+
+  if (!API_CONFIGURED) {
+    status.textContent = 'Uuden bändin luonti ei ole vielä käytössä — tulossa pian.';
+    status.className = 'form-status err';
+    return;
+  }
+
+  var data = {};
+  new FormData(createForm).forEach(function (v, k) { data[k] = v; });
+  status.textContent = 'Luodaan…';
+  status.className = 'form-status';
+
+  fetch(API_URL + '/posters', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) })
+    .then(function (r) { return r.json().catch(function () { return {}; }).then(function (body) { return { status: r.status, body: body }; }); })
+    .then(function (res) {
+      if (res.status === 201) {
+        createDialog.close();
+        loadIndex(true);
+        showCode(res.body.id, res.body.code);
+      } else if (res.status === 400 && res.body.fields) {
+        var names = Object.keys(res.body.fields);
+        names.forEach(function (k) {
+          var f = createForm.querySelector('.field[data-for="' + k + '"]');
+          if (f) { f.classList.add('bad'); var m = f.querySelector('.msg'); if (m) m.textContent = res.body.fields[k]; }
+        });
+        status.textContent = 'Tarkista: ' + names.map(function (k) { return FIELD_LABELS[k] || k; }).join(', ') + '.';
+        status.className = 'form-status err';
+      } else if (res.status === 429) {
+        status.textContent = 'Liikaa yrityksiä juuri nyt. Yritä hetken päästä uudelleen.';
+        status.className = 'form-status err';
+      } else {
+        status.textContent = 'Luonti epäonnistui. Yritä hetken päästä uudelleen.';
+        status.className = 'form-status err';
+      }
+    })
+    .catch(function () { status.textContent = 'Luonti epäonnistui. Tarkista verkkoyhteys.'; status.className = 'form-status err'; });
 });
 
 // ── Muokkaa koodilla ──────────────────────────────────────────────────────
@@ -454,18 +535,26 @@ editCodeForm.addEventListener('submit', function (e) {
   e.preventDefault();
   var code = editCodeForm.elements.code.value.trim();
   var field = document.querySelector('#edit-code-dialog .field');
-  // Huom: tämä on paikallinen, silmämääräinen tarkistus ilman Workeria (vaihe 1).
-  // Oikea tarkistus (HMAC-vertailu palvelimella) tulee vaiheessa 2 — koodi ei silloinkaan
-  // koskaan kulje tässä muodossa julkisesti, vain sen tiiviste tallennetaan.
-  if (currentPoster && currentPoster.editCode && code === currentPoster.editCode) {
-    field.classList.remove('bad');
-    editCodeDialog.close();
-    openEditForm();
-  } else {
-    field.classList.add('bad');
-    field.querySelector('.msg').textContent = 'Väärä koodi.';
-    document.getElementById('edit-code-status').textContent = '';
+  field.classList.remove('bad');
+
+  if (!API_CONFIGURED) {
+    // Paikallinen, silmämääräinen tarkistus ilman Workeria (vain staattinen esimerkkidata).
+    if (currentPoster && currentPoster.editCode && code.toUpperCase() === currentPoster.editCode.toUpperCase()) {
+      editCodeDialog.close();
+      openEditForm();
+    } else {
+      field.classList.add('bad');
+      field.querySelector('.msg').textContent = 'Väärä koodi.';
+    }
+    return;
   }
+
+  // Koodia ei tarkisteta erikseen tässä — se lähetetään yhdessä muutosten kanssa
+  // vasta lopullisessa tallennuksessa (vaihe 2). Palvelin ei koskaan paljasta,
+  // onko koodi oikein, ilman että samalla yritetään oikeaa muutosta.
+  pendingEditCode = code;
+  editCodeDialog.close();
+  openEditForm();
 });
 
 function openEditForm() {
@@ -484,8 +573,43 @@ editFormDialog.addEventListener('click', function (e) { if (e.target === editFor
 editForm.addEventListener('submit', function (e) {
   e.preventDefault();
   var status = document.getElementById('edit-form-status');
-  status.textContent = 'Tallennus ei ole vielä käytössä — tulossa pian.';
-  status.className = 'form-status err';
+
+  if (!API_CONFIGURED) {
+    status.textContent = 'Tallennus ei ole vielä käytössä — tulossa pian.';
+    status.className = 'form-status err';
+    return;
+  }
+
+  var data = {};
+  new FormData(editForm).forEach(function (v, k) { data[k] = v; });
+  data.code = pendingEditCode;
+  status.textContent = 'Tallennetaan…';
+  status.className = 'form-status';
+
+  fetch(API_URL + '/posters/' + encodeURIComponent(currentPoster.id), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) })
+    .then(function (r) { return r.json().catch(function () { return {}; }).then(function (body) { return { status: r.status, body: body }; }); })
+    .then(function (res) {
+      if (res.status === 200) {
+        pendingEditCode = '';
+        editFormDialog.close();
+        showDetail(currentPoster.id);
+      } else if (res.status === 403) {
+        editFormDialog.close();
+        openEditCodeDialog();
+        document.getElementById('edit-code-status').textContent = 'Väärä koodi. Yritä uudelleen.';
+        document.getElementById('edit-code-status').className = 'form-status err';
+      } else if (res.status === 400 && res.body.fields) {
+        status.textContent = 'Tarkista lomakkeen kentät.';
+        status.className = 'form-status err';
+      } else if (res.status === 429) {
+        status.textContent = 'Liikaa yrityksiä juuri nyt. Yritä hetken päästä uudelleen.';
+        status.className = 'form-status err';
+      } else {
+        status.textContent = 'Tallennus epäonnistui. Yritä hetken päästä uudelleen.';
+        status.className = 'form-status err';
+      }
+    })
+    .catch(function () { status.textContent = 'Tallennus epäonnistui. Tarkista verkkoyhteys.'; status.className = 'form-status err'; });
 });
 
 // ── Lisää keikka bändin sivulle (ei vielä käytössä — odottaa Workeria) ───
@@ -501,11 +625,52 @@ function openGigDialog() {
 document.getElementById('gig-x').addEventListener('click', function () { gigDialog.close(); });
 document.getElementById('gig-cancel').addEventListener('click', function () { gigDialog.close(); });
 gigDialog.addEventListener('click', function (e) { if (e.target === gigDialog) gigDialog.close(); });
+function markGigField(name, msg) {
+  var f = gigForm.querySelector('.field[data-for="' + name + '"]');
+  if (!f) return;
+  f.classList.toggle('bad', !!msg);
+  if (msg) f.querySelector('.msg').textContent = msg;
+}
+
 gigForm.addEventListener('submit', function (e) {
   e.preventDefault();
   var status = document.getElementById('gig-form-status');
-  status.textContent = 'Keikan lisäys ei ole vielä käytössä — tulossa pian.';
-  status.className = 'form-status err';
+  gigForm.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
+
+  if (!API_CONFIGURED) {
+    status.textContent = 'Keikan lisäys ei ole vielä käytössä — tulossa pian.';
+    status.className = 'form-status err';
+    return;
+  }
+
+  var data = {};
+  new FormData(gigForm).forEach(function (v, k) { data[k] = v; });
+  status.textContent = 'Lisätään…';
+  status.className = 'form-status';
+
+  fetch(API_URL + '/posters/' + encodeURIComponent(currentPoster.id) + '/gigs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) })
+    .then(function (r) { return r.json().catch(function () { return {}; }).then(function (body) { return { status: r.status, body: body }; }); })
+    .then(function (res) {
+      if (res.status === 201) {
+        gigDialog.close();
+        showDetail(currentPoster.id);
+      } else if (res.status === 403) {
+        markGigField('code', 'Väärä koodi.');
+        status.textContent = '';
+      } else if (res.status === 400 && res.body.fields) {
+        var names = Object.keys(res.body.fields);
+        names.forEach(function (k) { markGigField(k, res.body.fields[k]); });
+        status.textContent = 'Tarkista merkityt kentät.';
+        status.className = 'form-status err';
+      } else if (res.status === 429) {
+        status.textContent = 'Liikaa yrityksiä juuri nyt. Yritä hetken päästä uudelleen.';
+        status.className = 'form-status err';
+      } else {
+        status.textContent = 'Lisäys epäonnistui. Yritä hetken päästä uudelleen.';
+        status.className = 'form-status err';
+      }
+    })
+    .catch(function () { status.textContent = 'Lisäys epäonnistui. Tarkista verkkoyhteys.'; status.className = 'form-status err'; });
 });
 
 route();

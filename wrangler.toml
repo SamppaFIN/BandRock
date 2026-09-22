@@ -1,7 +1,8 @@
-# Keikkalistan Worker. Aja komennot projektin juuresta: `npm run deploy:worker`
+# BandRockin Worker. Aja komennot projektin juuresta: `npm run deploy:worker`
 # (kirjautuminen kerran: `npx wrangler login`).
-# database_id tulee komennosta `npx wrangler d1 create nekalabama-gigs` (README kohta 2).
-name = "nekalabama-gigs"
+# R2-ämpäri luodaan komennolla `npx wrangler r2 bucket create bandrock-posters` (README).
+# Salaisuudet (CODE_SECRET, TURNSTILE_SECRET) asetetaan `wrangler secret put`illa, ei tähän.
+name = "bandrock"
 main = "worker/src/index.js"
 compatibility_date = "2026-09-08"
 
@@ -9,8 +10,14 @@ compatibility_date = "2026-09-08"
 # Sivut, joilta selain saa kutsua Workeria (pilkulla erotettuna).
 ALLOWED_ORIGINS = "https://samppafin.github.io"
 
-[[d1_databases]]
-binding = "DB"
-database_name = "nekalabama-gigs"
-database_id = "REPLACE-WITH-ID-FROM-d1-create"
-migrations_dir = "worker/migrations"
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "bandrock-posters"
+
+# Yksinkertainen, sijaintikohtainen nopeusrajoitin luonnille ja muokkaukselle.
+# Hidastaa koodin arvaamista ja roskapostia, ei täydellinen suoja (Cloudflaren oma dokumentaatio:
+# "permissive, eventually consistent" — riittää tälle, ei rahaliikenteelle).
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }

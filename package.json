@@ -2,13 +2,12 @@
   "name": "bandrock",
   "private": true,
   "type": "module",
-  "description": "BandRock: ilmoitustaulu bändeille (GitHub Pages, staattinen). Worker + R2 -tallennus tulossa vaiheessa 2.",
+  "description": "BandRock: ilmoitustaulu bändeille (GitHub Pages, staattinen) + Worker/R2-rajapinta.",
   "scripts": {
     "test": "node --test",
     "dev:worker": "wrangler dev",
     "deploy:worker": "wrangler deploy",
-    "migrate:local": "wrangler d1 migrations apply DB --local",
-    "migrate:remote": "wrangler d1 migrations apply DB --remote"
+    "seed:local": "node worker/seed-local.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.136.1"

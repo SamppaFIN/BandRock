@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseMedia } from '../worker/src/media.js';
-import { validateGig } from '../worker/src/validate.js';
+import { validateCreate } from '../worker/src/schema.js';
 
 const YT = 'https://www.youtube-nocookie.com/embed/GKlZrIftTZ8';
 
@@ -83,16 +83,16 @@ test('huijausyritykset ja tuntemattomat palvelut hylätään', () => {
   }
 });
 
-test('validateGig: soitinlinkki muuttuu upotusosoitteeksi, väärä linkki antaa virheen', () => {
-  const base = { date: '2026-10-12', artist: 'Ray Jone', venue: 'Pub', city: 'Tampere' };
-  const ok = validateGig({ ...base, media: 'https://youtu.be/GKlZrIftTZ8' }, '2026-09-21');
+test('validateCreate: soitinlinkki muuttuu upotusosoitteeksi, väärä linkki antaa virheen', () => {
+  const base = { title: 'Ray Jone & The Nekalabama Thunderstorm' };
+  const ok = validateCreate({ ...base, media: 'https://youtu.be/GKlZrIftTZ8' });
   assert.equal(ok.ok, true);
   assert.equal(ok.value.embed, YT);
 
-  const bad = validateGig({ ...base, media: 'https://ray.bandcamp.com/album/madrid' }, '2026-09-21');
+  const bad = validateCreate({ ...base, media: 'https://ray.bandcamp.com/album/madrid' });
   assert.equal(bad.ok, false);
   assert.deepEqual(Object.keys(bad.errors), ['media']);
 
-  const none = validateGig({ ...base, media: '' }, '2026-09-21');
+  const none = validateCreate({ ...base, media: '' });
   assert.equal(none.value.embed, null);
 });
