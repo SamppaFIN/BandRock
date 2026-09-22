@@ -52,18 +52,9 @@ function todayISO() {
   return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
 }
 
-// ── Keikkalista: uusin ylimpänä, vuosiotsikot, mennet himmeinä ─────────────
-export function renderGigList(gigs) {
-  var ol = el('ol', 'gigs');
-  if (!gigs || !gigs.length) return ol;
-  var today = todayISO();
-  var sorted = gigs.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
-  var year = null;
-  sorted.forEach(function (g) {
-    var y = g.date.slice(0, 4);
-    if (y !== year) { year = y; ol.appendChild(el('li', 'gig-year', y)); }
-    var past = isPastISO(g.date, today);
-    var li = el('li', 'gig' + (past ? ' past' : ''));
+// ── Yksi keikkarivi ──────────────────────────────────────────────────────
+function buildGigItem(g) {
+    var li = el('li', 'gig');
 
     var when = el('div', 'gig-when');
     when.appendChild(el('span', 'gig-date', fmtDateISO(g.date)));
@@ -102,9 +93,41 @@ export function renderGigList(gigs) {
       slot.appendChild(btn);
       li.appendChild(slot);
     }
-    ol.appendChild(li);
+    return li;
+}
+
+function buildGigList(items) {
+  var ol = el('ol', 'gigs');
+  var year = null;
+  items.forEach(function (g) {
+    var y = g.date.slice(0, 4);
+    if (y !== year) { year = y; ol.appendChild(el('li', 'gig-year', y)); }
+    ol.appendChild(buildGigItem(g));
   });
   return ol;
+}
+
+// ── Keikat: tulevat aina näkyvissä (seuraava ensin), mennet napin takana ──
+export function renderGigSection(gigs) {
+  var frag = document.createDocumentFragment();
+  var today = todayISO();
+  var upcoming = (gigs || []).filter(function (g) { return !isPastISO(g.date, today); })
+    .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  var past = (gigs || []).filter(function (g) { return isPastISO(g.date, today); })
+    .sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
+
+  frag.appendChild(buildGigList(upcoming));
+
+  if (past.length) {
+    var details = document.createElement('details');
+    details.className = 'gigs-past';
+    var summary = document.createElement('summary');
+    summary.textContent = 'Menneet keikat (' + past.length + ')';
+    details.appendChild(summary);
+    details.appendChild(buildGigList(past));
+    frag.appendChild(details);
+  }
+  return frag;
 }
 
 // ── Bändin etsivä keikka: ensimmäinen tuleva, listan mukaisessa järjestyksessä ──
@@ -266,6 +289,29 @@ export function renderDetail(poster) {
       listenSec.appendChild(sbox);
     }
     frag.appendChild(listenSec);
+  } else if (poster.embed) {
+    // Yksinkertainen lomakkeella lisätty linkki (ei kuratoitua kansikuvaa/videota):
+    // sama klikkaa-avautuu-soitin-malli kuin keikkariveillä.
+    var info = playerFor(poster.embed);
+    if (info) {
+      var simpleListen = el('section', 'glass pad listen');
+      simpleListen.id = 'kuuntele';
+      simpleListen.setAttribute('aria-labelledby', 'listen-h');
+      simpleListen.appendChild(el('h2', 'label', 'Kuuntele · Listen')).id = 'listen-h';
+      var box = el('div', info.ratio ? 'video' : 'spotify');
+      var pbtn = el('button', 'play', '▶ Kuuntele (' + info.label + ')');
+      pbtn.type = 'button';
+      pbtn.addEventListener('click', function () {
+        var f = document.createElement('iframe');
+        f.src = poster.embed; f.title = info.label; f.allow = info.allow;
+        f.referrerPolicy = 'strict-origin-when-cross-origin';
+        f.setAttribute('allowfullscreen', '');
+        box.replaceChildren(f);
+      });
+      box.appendChild(pbtn);
+      simpleListen.appendChild(box);
+      frag.appendChild(simpleListen);
+    }
   }
 
   if (poster.gigs && poster.gigs.length) {
@@ -275,7 +321,7 @@ export function renderDetail(poster) {
     var ghead = el('div', 'head');
     ghead.appendChild(el('h2', 'label', 'Keikat · Gigs')).id = 'gigs-h';
     gigsSec.appendChild(ghead);
-    gigsSec.appendChild(renderGigList(poster.gigs));
+    gigsSec.appendChild(renderGigSection(poster.gigs));
     frag.appendChild(gigsSec);
   }
 

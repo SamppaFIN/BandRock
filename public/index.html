@@ -95,6 +95,8 @@
       <label class="field full" data-for="tags"><span class="t">Tyylilajit</span><input type="text" name="tags" maxlength="120" placeholder="esim. country soul, blues" autocomplete="off">
         <span class="hint">Pilkulla eroteltuna.</span></label>
       <label class="field full" data-for="email"><span class="t">Yhteystieto (näkyy julkisesti)</span><input type="email" name="email" maxlength="120" autocomplete="off"></label>
+      <label class="field full" data-for="media"><span class="t">Musiikki tai video</span><input type="url" name="media" maxlength="300" placeholder="https://open.spotify.com/artist/…"><span class="err">⚠ <span class="msg"></span></span>
+        <span class="hint">YouTube-, Spotify- tai SoundCloud-linkki.</span></label>
       <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
       <div class="actions">
         <button class="btn" type="submit" id="create-submit">Luo sivu</button>
@@ -158,6 +160,9 @@
       <label class="field full" data-for="tagline"><span class="t">Kuvaus</span><textarea name="tagline" maxlength="400"></textarea></label>
       <label class="field full" data-for="tags"><span class="t">Tyylilajit</span><input type="text" name="tags" maxlength="120" autocomplete="off">
         <span class="hint">Pilkulla eroteltuna.</span></label>
+      <label class="field full" data-for="email"><span class="t">Yhteystieto (näkyy julkisesti)</span><input type="email" name="email" maxlength="120" autocomplete="off"></label>
+      <label class="field full" data-for="media"><span class="t">Musiikki tai video</span><input type="url" name="media" maxlength="300" placeholder="https://open.spotify.com/artist/…"><span class="err">⚠ <span class="msg"></span></span>
+        <span class="hint">YouTube-, Spotify- tai SoundCloud-linkki.</span></label>
       <div class="actions">
         <button class="btn" type="submit">Tallenna</button>
         <button class="btn ghost" type="button" id="edit-form-cancel">Peruuta</button>
@@ -358,7 +363,8 @@ async function showDetail(slug) {
   var navLinks = document.getElementById('nav-band-links');
   navLinks.replaceChildren();
   [['keikat', 'Keikat'], ['kuuntele', 'Kuuntele'], ['booking', 'Booking']].forEach(function (pair) {
-    if (poster[pair[0] === 'keikat' ? 'gigs' : pair[0] === 'kuuntele' ? 'listen' : 'contact']) {
+    var has = pair[0] === 'keikat' ? poster.gigs : pair[0] === 'kuuntele' ? (poster.listen || poster.embed) : poster.contact;
+    if (has) {
       var a = el('a', 'link', pair[1]);
       a.href = '#' + pair[0];
       navLinks.appendChild(a);
@@ -563,6 +569,9 @@ function openEditForm() {
   editForm.elements.title.value = currentPoster.title || '';
   editForm.elements.tagline.value = currentPoster.tagline || '';
   editForm.elements.tags.value = (currentPoster.tags || []).join(', ');
+  editForm.elements.email.value = (currentPoster.contact && currentPoster.contact.email) || '';
+  editForm.elements.media.value = currentPoster.media || '';
+  editForm.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
   document.getElementById('edit-form-status').textContent = '';
   document.getElementById('edit-form-status').className = 'form-status';
   editFormDialog.showModal();
@@ -580,6 +589,7 @@ editForm.addEventListener('submit', function (e) {
     return;
   }
 
+  editForm.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
   var data = {};
   new FormData(editForm).forEach(function (v, k) { data[k] = v; });
   data.code = pendingEditCode;
@@ -599,7 +609,12 @@ editForm.addEventListener('submit', function (e) {
         document.getElementById('edit-code-status').textContent = 'Väärä koodi. Yritä uudelleen.';
         document.getElementById('edit-code-status').className = 'form-status err';
       } else if (res.status === 400 && res.body.fields) {
-        status.textContent = 'Tarkista lomakkeen kentät.';
+        var names = Object.keys(res.body.fields);
+        names.forEach(function (k) {
+          var f = editForm.querySelector('.field[data-for="' + k + '"]');
+          if (f) { f.classList.add('bad'); var m = f.querySelector('.msg'); if (m) m.textContent = res.body.fields[k]; }
+        });
+        status.textContent = 'Tarkista: ' + names.map(function (k) { return FIELD_LABELS[k] || k; }).join(', ') + '.';
         status.className = 'form-status err';
       } else if (res.status === 429) {
         status.textContent = 'Liikaa yrityksiä juuri nyt. Yritä hetken päästä uudelleen.';

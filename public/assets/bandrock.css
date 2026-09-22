@@ -213,8 +213,24 @@
   .gig:hover { background: color-mix(in srgb, white 8%, transparent); border-color: var(--hairline); transform: translateY(-1px); }
   .gig-year { padding: 10px 6px 0; font-size: 12px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--text-faint); }
   .gig-year:first-child { padding-top: 0; }
-  .gig.past { opacity: 0.6; }
-  .gig.past .gig-date { color: var(--text-faint); }
+
+  /* Menneet keikat piilossa napin takana — pitää tulevat esillä eikä venytä sivua. */
+  .gigs-past { margin-top: 14px; }
+  .gigs-past summary {
+    cursor: pointer; list-style: none;
+    display: inline-flex; align-items: center; gap: 8px;
+    min-height: var(--tap); padding: 0 4px;
+    font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-faint);
+    transition: color var(--step) var(--ease);
+  }
+  .gigs-past summary::-webkit-details-marker { display: none; }
+  .gigs-past summary::before { content: '▸'; color: var(--gold); font-size: 13px; transition: transform var(--step) var(--ease); }
+  .gigs-past[open] summary::before { transform: rotate(90deg); }
+  .gigs-past summary:hover { color: var(--text); }
+  .gigs-past .gigs { margin-top: 12px; }
+  /* .gigs asettaa display:flex, mikä muuten kumoaisi selaimen oman
+     "piilota suljetun detailsin sisältö" -oletuksen (tekijän tyyli voittaa aina UA-tyylin). */
+  .gigs-past:not([open]) > .gigs { display: none; }
   .gig-date { color: var(--gold); font-size: 17px; font-weight: 700; }
   .gig-time { display: block; font-size: 14px; color: var(--text-faint); font-weight: 400; }
   .gig-artist { font-size: 20px; line-height: 1.3; overflow-wrap: anywhere; }
