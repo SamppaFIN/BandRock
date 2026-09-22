@@ -118,6 +118,12 @@ wrangler.toml    worker/{src/{index.js,validate.js,media.js},migrations/}    tes
 
 ## 5. Päätökset
 
+**Päätetty (Infinite, 22.9.2026)**
+- Uusi logo (`public/img/logo-full.jpg`, 1205×548, musta JPEG, koko bändin nimi kirjoitettuna) korvaa otsikon kokonaan: `<h1>` sisältää nyt vain logokuvan (`alt`-teksti kantaa nimen saavutettavuuteen), erillinen "Ray Jone" / "& The Nekalabama Thunderstorm" -teksti poistettu turhana toistona. `mix-blend-mode: screen` sulattaa kuvan mustan taustan sivun taustaan saumattomasti. Nav-valikon ja favicon-ikonin `logo.png` ei muuttunut.
+- Bändikuvaan (`.photo`) lisätty `<figure>/<figcaption>`: kuvaaja Elmo Romppanen ja neljä jäsentä soittimineen.
+- Keikkahistoria (14.6.2025–3.7.2027, 16 keikkaa) kovakoodattu suoraan `#gigs`-listaan yhtenä aikajärjestyksessä olevana listana vuosiotsikoilla (2025/2026/2027). Menneet keikat (13 kpl) näytetään himmeinä (`.gig.past`, opacity 0.6, päivämäärä ei kultainen); kolme tulevaa (26.9.2026, 17.10.2026, 3.7.2027) näkyvät normaalisti korostettuina.
+  - ⚠️ **Riski:** koska `#gigs` on sama elementti jota `loadGigs()` korvaa kokonaan (`replaceChildren`) kun Worker julkaistaan ja `API_URL` päivitetään, tämä koko keikkahistoria katoaa sivulta sillä hetkellä — D1 palauttaa vain `date >= tänään`. Jos historia halutaan säilyttää sivulla Workerin julkaisun jälkeenkin, se pitää siirtää D1:een (jolloin menneet keikat vaativat oman käsittelyn, koska nykyinen skeema suodattaa ne pois) tai omaksi kiinteäksi osioksi. Ei ratkaistu vielä — mainittava Infinitille ennen Workerin julkaisua.
+
 **Päätetty (Infinite, 21.9.2026)**
 - Tietokanta on **D1**.
 - Avoin ilmoitus ilman kirjautumista ja heti näkyvänä. Testikäyttäjiä on vähän. Rekisteröinti ja sensuuri mietitään myöhemmin.
