@@ -160,8 +160,7 @@ async function createPoster(request, env, cors) {
     tagline: result.value.tagline,
     tags: result.value.tags,
     contact: result.value.email ? { email: result.value.email } : null,
-    media: result.value.media,
-    embed: result.value.embed,
+    discography: result.value.discography,
     gigs: [],
     status: 'visible',
     created: now,
@@ -202,8 +201,7 @@ async function patchPoster(request, env, id, cors) {
     tagline: result.value.tagline,
     tags: result.value.tags,
     contact: result.value.email ? { email: result.value.email } : poster.contact,
-    media: result.value.media ?? poster.media,
-    embed: result.value.embed ?? poster.embed,
+    discography: result.value.discography,
     updated: Date.now(),
   };
   await env.BUCKET.put(`posters/${id}.json`, JSON.stringify(updated), { customMetadata: customMetaFor(updated) });

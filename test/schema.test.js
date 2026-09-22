@@ -42,12 +42,28 @@ test('validateCreate: sähköposti tarkistetaan', () => {
   assert.equal(r.value.email, 'band@example.com');
 });
 
-test('validateCreate: soitinlinkki muuttuu upotusosoitteeksi, väärä linkki antaa virheen', () => {
+test('validateCreate: soitinlinkki muuttuu upotusosoitteeksi ja alkuperäinen url säilyy esitäyttöä varten', () => {
   const ok = validateCreate({ title: 'X', media: 'https://youtu.be/GKlZrIftTZ8' });
   assert.equal(ok.ok, true);
-  assert.equal(ok.value.embed, 'https://www.youtube-nocookie.com/embed/GKlZrIftTZ8');
+  assert.deepEqual(ok.value.discography, [{ url: 'https://youtu.be/GKlZrIftTZ8', embed: 'https://www.youtube-nocookie.com/embed/GKlZrIftTZ8' }]);
 
   assert.deepEqual(fields(validateCreate, { title: 'X', media: 'https://ray.bandcamp.com/album/madrid' }), ['media']);
+});
+
+test('validateCreate: useampi soitinlinkki, yksi per rivi, enintään MAX_MEDIA', () => {
+  const three = ['https://youtu.be/GKlZrIftTZ8', 'https://youtu.be/dQw4w9WgXcQ', 'https://open.spotify.com/artist/6MZ5sOhKDci1bYweyqJBj7'].join('\n');
+  const ok = validateCreate({ title: 'X', media: three });
+  assert.equal(ok.ok, true);
+  assert.equal(ok.value.discography.length, 3);
+  assert.equal(ok.value.discography[2].embed, 'https://open.spotify.com/embed/artist/6MZ5sOhKDci1bYweyqJBj7?theme=0');
+
+  const many = Array.from({ length: 10 }, () => 'https://youtu.be/GKlZrIftTZ8').join('\n');
+  assert.equal(validateCreate({ title: 'X', media: many }).value.discography.length, 6);
+});
+
+test('validateCreate: yksikin huono linkki hylkää koko median-kentän', () => {
+  const mix = 'https://youtu.be/GKlZrIftTZ8\nhttps://ray.bandcamp.com/album/madrid';
+  assert.deepEqual(fields(validateCreate, { title: 'X', media: mix }), ['media']);
 });
 
 test('validateCreate: pituusrajat ja ohjausmerkit', () => {

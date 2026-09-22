@@ -3,6 +3,7 @@ import { parseMedia } from './media.js';
 
 export const LIMITS = { title: 80, city: 60, tagline: 400, tag: 30, email: 120, note: 300, venue: 80, url: 300, media: 300 };
 export const MAX_TAGS = 6;
+export const MAX_MEDIA = 6;
 export const TYPES = new Set(['bandi', 'keikka', 'haku', 'myynti']);
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -60,6 +61,21 @@ function parseTags(raw) {
   return out;
 }
 
+// Yksi linkki per rivi. Palauttaa sekä käyttäjän kirjoittaman osoitteen (esitäyttöä
+// varten muokkauslomakkeeseen) että palvelimen rakentaman turvallisen upotusosoitteen.
+function parseDiscography(raw, errors) {
+  if (typeof raw !== 'string' || !raw.trim()) return [];
+  const lines = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).slice(0, MAX_MEDIA);
+  const out = [];
+  for (const line of lines) {
+    if (len(line) > LIMITS.media) { errors.media = `Jokainen linkki enintään ${LIMITS.media} merkkiä.`; return []; }
+    const embed = parseMedia(line);
+    if (!embed) { errors.media = 'Tuettu on YouTube-, Spotify- tai SoundCloud-linkki, yksi per rivi.'; return []; }
+    out.push({ url: line, embed });
+  }
+  return out;
+}
+
 function commonFields(src, errors, { titleRequired }) {
   const title = textField(src, errors, 'title', LIMITS.title, titleRequired);
   const city = textField(src, errors, 'city', LIMITS.city, false);
@@ -73,17 +89,9 @@ function commonFields(src, errors, { titleRequired }) {
     else email = rawEmail;
   }
 
-  let embed = null;
-  const rawMedia = clean(src.media);
-  if (rawMedia) {
-    if (len(rawMedia) > LIMITS.media) errors.media = `Enintään ${LIMITS.media} merkkiä.`;
-    else {
-      embed = parseMedia(rawMedia);
-      if (!embed) errors.media = 'Tuettu on YouTube-, Spotify- tai SoundCloud-linkki.';
-    }
-  }
+  const discography = parseDiscography(src.media, errors);
 
-  return { title, city, tagline, tags, email, media: rawMedia || null, embed };
+  return { title, city, tagline, tags, email, discography };
 }
 
 /** POST /api/posters — luonti. */

@@ -95,8 +95,8 @@
       <label class="field full" data-for="tags"><span class="t">Tyylilajit</span><input type="text" name="tags" maxlength="120" placeholder="esim. country soul, blues" autocomplete="off">
         <span class="hint">Pilkulla eroteltuna.</span></label>
       <label class="field full" data-for="email"><span class="t">Yhteystieto (näkyy julkisesti)</span><input type="email" name="email" maxlength="120" autocomplete="off"></label>
-      <label class="field full" data-for="media"><span class="t">Musiikki tai video</span><input type="url" name="media" maxlength="300" placeholder="https://open.spotify.com/artist/…"><span class="err">⚠ <span class="msg"></span></span>
-        <span class="hint">YouTube-, Spotify- tai SoundCloud-linkki.</span></label>
+      <label class="field full" data-for="media"><span class="t">Musiikki tai video</span><textarea name="media" placeholder="https://open.spotify.com/artist/…&#10;https://youtu.be/…"></textarea><span class="err">⚠ <span class="msg"></span></span>
+        <span class="hint">Yksi linkki per rivi (YouTube, Spotify tai SoundCloud), enintään 6.</span></label>
       <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
       <div class="actions">
         <button class="btn" type="submit" id="create-submit">Luo sivu</button>
@@ -161,8 +161,8 @@
       <label class="field full" data-for="tags"><span class="t">Tyylilajit</span><input type="text" name="tags" maxlength="120" autocomplete="off">
         <span class="hint">Pilkulla eroteltuna.</span></label>
       <label class="field full" data-for="email"><span class="t">Yhteystieto (näkyy julkisesti)</span><input type="email" name="email" maxlength="120" autocomplete="off"></label>
-      <label class="field full" data-for="media"><span class="t">Musiikki tai video</span><input type="url" name="media" maxlength="300" placeholder="https://open.spotify.com/artist/…"><span class="err">⚠ <span class="msg"></span></span>
-        <span class="hint">YouTube-, Spotify- tai SoundCloud-linkki.</span></label>
+      <label class="field full" data-for="media"><span class="t">Musiikki tai video</span><textarea name="media" placeholder="https://open.spotify.com/artist/…&#10;https://youtu.be/…"></textarea><span class="err">⚠ <span class="msg"></span></span>
+        <span class="hint">Yksi linkki per rivi (YouTube, Spotify tai SoundCloud), enintään 6.</span></label>
       <div class="actions">
         <button class="btn" type="submit">Tallenna</button>
         <button class="btn ghost" type="button" id="edit-form-cancel">Peruuta</button>
@@ -570,7 +570,11 @@ function openEditForm() {
   editForm.elements.tagline.value = currentPoster.tagline || '';
   editForm.elements.tags.value = (currentPoster.tags || []).join(', ');
   editForm.elements.email.value = (currentPoster.contact && currentPoster.contact.email) || '';
-  editForm.elements.media.value = currentPoster.media || '';
+  // Esitäytetään käyttäjän alkuperäisillä linkeillä (poster.discography[].url),
+  // ei koskaan palvelimen rakentamalla upotusosoitteella — se ei kelpaisi uudelleen
+  // syötteeksi (esim. youtube-nocookie.com/embed/... ei ole sallittu muoto).
+  editForm.elements.media.value = ((currentPoster.discography || [])
+    .map(function (d) { return d.url; }).filter(Boolean)).join('\n');
   editForm.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
   document.getElementById('edit-form-status').textContent = '';
   document.getElementById('edit-form-status').className = 'form-status';

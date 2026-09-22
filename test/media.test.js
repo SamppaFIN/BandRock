@@ -87,12 +87,12 @@ test('validateCreate: soitinlinkki muuttuu upotusosoitteeksi, väärä linkki an
   const base = { title: 'Ray Jone & The Nekalabama Thunderstorm' };
   const ok = validateCreate({ ...base, media: 'https://youtu.be/GKlZrIftTZ8' });
   assert.equal(ok.ok, true);
-  assert.equal(ok.value.embed, YT);
+  assert.equal(ok.value.discography[0].embed, YT);
 
   const bad = validateCreate({ ...base, media: 'https://ray.bandcamp.com/album/madrid' });
   assert.equal(bad.ok, false);
   assert.deepEqual(Object.keys(bad.errors), ['media']);
 
   const none = validateCreate({ ...base, media: '' });
-  assert.equal(none.value.embed, null);
+  assert.deepEqual(none.value.discography, []);
 });
