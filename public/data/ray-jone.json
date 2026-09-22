@@ -1,0 +1,68 @@
+{
+  "id": "ray-jone",
+  "type": "bandi",
+  "title": "Ray Jone & The Nekalabama Thunderstorm",
+  "city": "Tampere",
+  "tags": ["country soul", "blues", "americana"],
+  "tagline": "for the long drives, late nights and lives lived full",
+  "editCode": "00000",
+  "logo": { "src": "img/logo-full.jpg", "width": 1205, "height": 548 },
+  "bio": [
+    "Ray Jone & The Nekalabama Thunderstorm blend raw country soul with deep blues roots, creating a sound that’s as weathered and honest as the stories they tell.",
+    "The band craft music that feels both grounded and electrified — like a thunderstorm rolling through a southern backroad town.",
+    "Heartfelt, gritty, and steeped in Americana, Ray Jone and The Nekalabama Thunderstorm offer songs for the long drives, late nights, and lives lived full."
+  ],
+  "photo": {
+    "src": "img/band.jpg",
+    "width": 1400,
+    "height": 942,
+    "alt": "Ray Jone & The Nekalabama Thunderstorm",
+    "credit": "Elmo Romppanen",
+    "members": [
+      { "name": "Ray Jone", "role": "Vocals & Acoustic Guitar" },
+      { "name": "Mikko Laine", "role": "Electric Guitar" },
+      { "name": "Antti Romppanen", "role": "Drums" },
+      { "name": "Tommi Lukinmaa", "role": "Upright Bass" }
+    ]
+  },
+  "listen": {
+    "cover": { "src": "img/madrid.jpg", "width": 700, "height": 700 },
+    "title": "Madrid",
+    "kind": "Single",
+    "youtube": "https://www.youtube-nocookie.com/embed/GKlZrIftTZ8",
+    "youtubeTitle": "Madrid – musiikkivideo",
+    "spotifyArtist": "6MZ5sOhKDci1bYweyqJBj7"
+  },
+  "gigs": [
+    { "date": "2027-07-03", "venue": "Kullaa Rock n Roll Rumble" },
+    { "date": "2026-10-17", "venue": "Pub Armo", "note": "RJNT Duo", "url": "https://www.facebook.com/p/Armo-61551476098175/" },
+    { "date": "2026-09-26", "venue": "Haikan lava", "note": "Yksityistilaisuus", "url": "https://haikanlava.fi/" },
+    { "date": "2026-07-25", "venue": "Vastavirta klubi", "city": "Pispala" },
+    { "date": "2026-07-24", "venue": "Bar Loose", "city": "Helsinki" },
+    { "date": "2026-06-11", "venue": "Frank The Lobster" },
+    { "date": "2026-04-18", "venue": "Varjobaari", "city": "Hervanta", "note": "RJNT Trio" },
+    { "date": "2026-03-21", "venue": "Oluthuone", "city": "Tampere", "note": "RJNT Trio" },
+    { "date": "2026-03-19", "venue": "Frank The Lobster", "city": "Tampere", "note": "RJNT Trio" },
+    { "date": "2026-03-07", "venue": "Kulttuuriravintola Railo" },
+    { "date": "2025-12-19", "venue": "Pub Armo" },
+    { "date": "2025-12-13", "venue": "Kulttuuriravintola Railo", "note": "Yksityistilaisuus" },
+    { "date": "2025-11-28", "venue": "Bar Groove", "city": "Tampere" },
+    { "date": "2025-10-16", "venue": "Pub Armo", "city": "Tampere" },
+    { "date": "2025-09-20", "venue": "Kulttuuriravintola Railo", "city": "Nekala" },
+    { "date": "2025-06-14", "venue": "Bar Groove", "city": "Tampere" }
+  ],
+  "contact": {
+    "phone": "+358408121751",
+    "phoneDisplay": "040 812 1751",
+    "email": "nekalabama@gmail.com",
+    "social": [
+      { "label": "Facebook", "url": "https://www.facebook.com/profile.php?id=61590496347140" },
+      { "label": "Instagram", "url": "https://www.instagram.com/nekalabama_music_official/" },
+      { "label": "Spotify", "url": "https://open.spotify.com/artist/6MZ5sOhKDci1bYweyqJBj7" },
+      { "label": "YouTube", "url": "https://www.youtube.com/watch?v=GKlZrIftTZ8" }
+    ]
+  },
+  "status": "visible",
+  "created": 1758499200000,
+  "updated": 1758499200000
+}

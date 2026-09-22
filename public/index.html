@@ -3,414 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ray Jone &amp; The Nekalabama Thunderstorm</title>
-<meta name="description" content="Ray Jone &amp; The Nekalabama Thunderstorm: country soul, blues ja Americana. Uusin single Madrid, keikat ja keikkamyynti.">
+<title id="page-title">BandRock</title>
+<meta name="description" content="BandRock — ilmoitustaulu bändeille. Keikat, esittelyt ja yhteystiedot yhdellä sivulla, jonka kuka tahansa voi luoda.">
 <meta name="theme-color" content="#000000">
 <link rel="icon" type="image/png" href="img/logo.png">
 <link rel="preload" as="font" type="font/woff2" href="fonts/gentium-basic-normal-400.woff2" crossorigin>
+<link rel="stylesheet" href="assets/bandrock.css">
 <style>
 @font-face { font-family: 'Gentium Basic'; font-style: italic; font-weight: 400; font-display: swap; src: url("fonts/gentium-basic-italic-400.woff2") format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 @font-face { font-family: 'Gentium Basic'; font-style: italic; font-weight: 700; font-display: swap; src: url("fonts/gentium-basic-italic-700.woff2") format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 @font-face { font-family: 'Gentium Basic'; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/gentium-basic-normal-400.woff2") format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 @font-face { font-family: 'Gentium Basic'; font-style: normal; font-weight: 700; font-display: swap; src: url("fonts/gentium-basic-normal-700.woff2") format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-
-@layer base, layout, components, state;
-
-@layer base {
-  :root {
-    color-scheme: dark;
-
-    /* Väripaletti OKLCH:na. Kulta on bändin tunnusväri. */
-    --bg:          oklch(0.11 0.006 70);
-    --bg-deep:     oklch(0.06 0.004 70);
-    --surface:     oklch(0.17 0.008 70);
-    --text:        oklch(0.97 0.004 70);
-    --text-soft:   oklch(0.82 0.006 70);   /* ~8.9:1 mustaa vasten */
-    --text-faint:  oklch(0.70 0.008 70);   /* ~5.6:1 — pienin sallittu tässä */
-    --gold:        #f5b122;
-    --gold-soft:   color-mix(in oklab, var(--gold) 76%, white);
-    --danger:      oklch(0.74 0.16 25);
-    --ok:          oklch(0.80 0.15 150);
-
-    /* Metalli: harjattu kromi ja kulta. Pieni tehoste, ei koko pinta. */
-    --chrome: linear-gradient(168deg, #ffffff 0%, #d5dae0 14%, #8d939b 34%, #f2f4f7 50%, #979da5 66%, #6d737b 84%, #ccd1d7 100%);
-    --edge:   linear-gradient(180deg, color-mix(in srgb, white 34%, transparent), color-mix(in srgb, white 4%, transparent) 42%, transparent 60%, color-mix(in srgb, white 10%, transparent));
-    --gold-metal: linear-gradient(180deg, #ffdd8a 0%, var(--gold) 44%, #c07f0c 52%, #efa91b 100%);
-
-    /* Lasi */
-    --glass:      color-mix(in srgb, var(--surface) 46%, transparent);
-    --glass-firm: color-mix(in srgb, var(--surface) 72%, transparent);
-    --hairline:   color-mix(in srgb, white 20%, transparent);
-    --blur: blur(16px) saturate(1.3);
-
-    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.5);
-    --shadow-2: 0 10px 30px -12px rgb(0 0 0 / 0.8);
-    --shadow-3: 0 22px 60px -20px rgb(0 0 0 / 0.9);
-
-    --r: 14px;
-    --tap: 44px;              /* WCAG 2.2: kosketuskohteen vähimmäiskoko */
-    --step: 0.22s;
-    --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
-    --gap: clamp(14px, 2.4vw, 20px);
-  }
-
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body {
-    margin: 0;
-    color: var(--text);
-    background: var(--bg-deep);
-    font-family: 'Gentium Basic', 'Gentium Book Basic', Georgia, serif;
-    -webkit-font-smoothing: antialiased;
-    /* Taustan hehku: antaa lasille jotain suodatettavaa. */
-    background-image:
-      radial-gradient(60% 40% at 50% -5%, color-mix(in srgb, var(--gold) 13%, transparent), transparent 70%),
-      radial-gradient(45% 35% at 12% 22%, color-mix(in srgb, #4a6fa5 11%, transparent), transparent 72%),
-      radial-gradient(50% 40% at 90% 78%, color-mix(in srgb, var(--gold) 8%, transparent), transparent 70%);
-    background-attachment: fixed;
-  }
-  h1, h2, h3, p, figure { margin: 0; }
-  /* height:auto kumoaa width/height-attribuuttien korkeuden, jotta aspect-ratio pätee. */
-  img, iframe { display: block; max-width: 100%; }
-  img { height: auto; }
-  /* Ilman tätä oma display-sääntö kumoaisi hidden-attribuutin. */
-  [hidden] { display: none !important; }
-  a { color: var(--gold); text-decoration: none; transition: color var(--step) var(--ease); }
-  a:hover { color: var(--text); }
-
-  /* Tarkennus näkyy aina — myös lasin päällä. */
-  :focus-visible {
-    outline: 2px solid var(--gold);
-    outline-offset: 3px;
-    border-radius: 4px;
-  }
-  ::selection { background: var(--gold); color: #000; }
-}
-
-@layer layout {
-  .page { padding: var(--gap) clamp(14px, 3vw, 28px) 64px; }
-  .wrap { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--gap); }
-  section { scroll-margin-top: 96px; }
-
-  /* Näkyviin vasta tabilla — ei venytä sivua sivusuunnassa. */
-  .skip {
-    position: fixed; left: 12px; top: -120px; z-index: 1001;
-    min-height: var(--tap); display: inline-flex; align-items: center;
-    background: var(--gold); color: #000; padding: 0 18px; border-radius: 8px; font-size: 15px;
-    transition: top var(--step) var(--ease);
-  }
-  .skip:focus { top: 12px; }
-}
-
-@layer components {
-  /* ── Lasipinta: käytetään kortteihin, valikkoon ja ikkunaan ───────── */
-  .glass {
-    position: relative;
-    background: var(--glass);
-    -webkit-backdrop-filter: var(--blur);
-    backdrop-filter: var(--blur);
-    border: 1px solid var(--hairline);
-    border-radius: var(--r);
-    box-shadow: var(--shadow-2), inset 0 1px 0 color-mix(in srgb, white 12%, transparent);
-  }
-  /* Metallinen valonheijastus yläreunassa — ohut, ei koristeeksi asti. */
-  .glass::before {
-    content: '';
-    position: absolute; inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: var(--edge);
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    mask-composite: exclude;
-    pointer-events: none;
-  }
-
-  .pad { padding: clamp(20px, 3.6vw, 32px); display: flex; flex-direction: column; gap: 20px; }
-
-  .label {
-    font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase;
-    color: var(--gold); font-weight: 700;
-  }
-  .muted { color: var(--text-faint); font-style: italic; font-size: 16px; }
-  .muted:empty { display: none; }
-  .rule { height: 1px; background: linear-gradient(90deg, transparent, var(--hairline) 18%, var(--hairline) 82%, transparent); }
-
-  /* ── Liimautuva valikko ───────────────────────────────────────────── */
-  .nav {
-    position: sticky; top: 0; z-index: 100;
-    padding: 8px clamp(14px, 3vw, 28px);
-    background: color-mix(in srgb, var(--bg-deep) 72%, transparent);
-    -webkit-backdrop-filter: var(--blur);
-    backdrop-filter: var(--blur);
-    border-bottom: 1px solid color-mix(in srgb, white 12%, transparent);
-  }
-  .nav-inner {
-    max-width: 860px; margin: 0 auto;
-    display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap;
-  }
-  .nav img { width: 34px; height: 32px; object-fit: contain; flex: none; }
-  .hero-logo, .photo img, .cover img { height: auto; }
-  .nav .who { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-soft); margin-right: auto; }
-  .nav a {
-    font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--text-soft);
-    min-height: var(--tap); display: inline-flex; align-items: center; padding: 0 4px;
-  }
-  .nav a:hover, .nav a:focus-visible { color: var(--gold); }
-
-  /* ── Otsikkoalue ──────────────────────────────────────────────────── */
-  .hero { padding: clamp(26px, 5vw, 46px) clamp(18px, 4vw, 30px) clamp(24px, 4vw, 34px); align-items: center; text-align: center; gap: 20px; }
-  .hero h1 { line-height: 0; }
-  /* Logo on musta JPEG ilman läpinäkyvyyttä. screen-sekoitus jättää mustan pois
-     ja tumma tausta kuultaa läpi, jolloin kuva sulautuu sivun taustaan liitoksitta. */
-  .hero-logo { width: clamp(260px, 78vw, 620px); height: auto; mix-blend-mode: screen; }
-  .tagline { font-size: clamp(16px, 2.4vw, 21px); font-style: italic; color: var(--text-soft); line-height: 1.5; max-width: 430px; text-wrap: balance; }
-  .amber-rule { width: 56px; height: 2px; border-radius: 2px; background: var(--gold-metal); }
-  .genres { font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--text-faint); }
-
-  .photo { padding: 8px 8px clamp(14px, 2.4vw, 18px); overflow: hidden; display: flex; flex-direction: column; gap: 14px; }
-  .photo img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: calc(var(--r) - 7px); }
-  .photo-caption { padding: 0 8px; display: flex; flex-direction: column; gap: 10px; }
-  .credit { font-size: 13px; font-style: italic; color: var(--text-faint); text-align: right; }
-  .members { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 24px; }
-  .members li { font-size: 15px; color: var(--text-soft); }
-  .members b { color: var(--text); font-weight: 700; }
-
-  .bio p { font-size: clamp(17px, 2.1vw, 20px); line-height: 1.65; text-wrap: pretty; color: var(--text-soft); }
-  .bio p:first-of-type { color: var(--text); }
-
-  .head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
-  .head em { font-size: 15px; color: var(--text-faint); }
-
-  /* Kaistaleveyteen reagoiva mediarivi (container query, ei ikkunan leveys). */
-  .listen { container-type: inline-size; }
-  .media { display: flex; flex-direction: column; gap: var(--gap); }
-  /* Kapeassa: allekkain, täysi leveys. Leveässä: vierekkäin.
-     flex-basis koskee vain riviä — pystysuunnassa se asettaisi korkeuden. */
-  @container (min-width: 520px) {
-    .media { flex-direction: row; align-items: flex-start; }
-    .cover { flex: 0 1 210px; }
-    .video { flex: 1 1 320px; min-width: 0; }
-  }
-  .cover { display: flex; flex-direction: column; gap: 10px; }
-  .cover img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 10px; border: 1px solid var(--hairline); }
-  .cover .title { font-size: 21px; }
-  .cover .kind { font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); }
-  .video { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 10px; overflow: hidden; border: 1px solid var(--hairline); }
-  .video iframe { width: 100%; height: 100%; border: 0; }
-  /* 152 px on Spotifyn soittimen oma korkeus. Upotus on valkoinen ennen kuin se on
-     latautunut, joten iframe saa mustan pohjan ja tumman värimaailman: ei valkoista välähdystä. */
-  /* Spotifyn kehys on eri sivusto, eikä sen valkoiseen taustaan ylety CSS:llä. Siksi
-     laatikko pysyy mustana ja soitin ladataan vasta napista — sama tapa kuin keikkariveillä.
-     Samalla Spotifylle ei lähde yhtään pyyntöä ennen kuin kävijä itse haluaa kuunnella. */
-  /* 154 px = soittimen oma 152 px + reunaviivat, jotta sisältöön jää tasan 152 px. */
-  .spotify { height: 154px; border-radius: 12px; overflow: hidden; border: 1px solid var(--hairline); background: #000; display: flex; align-items: center; justify-content: center; }
-  .spotify iframe { width: 100%; height: 100%; border: 0; background: #000; color-scheme: dark; }
-
-  /* ── Napit ────────────────────────────────────────────────────────── */
-  .btn {
-    font: inherit; font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase;
-    min-height: var(--tap); padding: 0 22px;
-    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    color: #1a1204; background: var(--gold-metal);
-    border: 1px solid color-mix(in srgb, #ffdd8a 60%, transparent);
-    border-radius: 10px; cursor: pointer;
-    box-shadow: var(--shadow-1), inset 0 1px 0 rgb(255 255 255 / 0.5);
-    transition: transform var(--step) var(--ease), box-shadow var(--step) var(--ease), filter var(--step) var(--ease);
-  }
-  .btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-2), inset 0 1px 0 rgb(255 255 255 / 0.6); filter: brightness(1.06); }
-  .btn:active { transform: translateY(0); }
-  .btn:disabled { opacity: 0.55; cursor: default; transform: none; filter: grayscale(0.3); }
-  .btn.small { font-size: 13px; padding: 0 16px; }
-  .btn.ghost {
-    color: var(--text); background: color-mix(in srgb, white 7%, transparent);
-    border-color: var(--hairline); box-shadow: inset 0 1px 0 color-mix(in srgb, white 14%, transparent);
-  }
-  .btn.ghost:hover { background: color-mix(in srgb, white 13%, transparent); filter: none; }
-
-  /* ── Keikkalista ──────────────────────────────────────────────────── */
-  .gigs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-  .gig {
-    display: grid; grid-template-columns: 116px 1fr auto; gap: 4px 18px; align-items: baseline;
-    padding: 16px; border-radius: 12px;
-    background: color-mix(in srgb, white 4%, transparent);
-    border: 1px solid color-mix(in srgb, white 11%, transparent);
-    transition: background var(--step) var(--ease), border-color var(--step) var(--ease), transform var(--step) var(--ease);
-  }
-  .gig:hover { background: color-mix(in srgb, white 8%, transparent); border-color: var(--hairline); transform: translateY(-1px); }
-  /* Vuosiotsikko listan sisällä. Ei omaa .gig-gridiä, vain otsikkorivi. */
-  .gig-year { padding: 10px 6px 0; font-size: 12px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--text-faint); }
-  .gig-year:first-child { padding-top: 0; }
-  /* Soitetut keikat näytetään himmeämpinä kuin tulevat. */
-  .gig.past { opacity: 0.6; }
-  .gig.past .gig-date { color: var(--text-faint); }
-  .gig-date { color: var(--gold); font-size: 17px; font-weight: 700; }
-  .gig-time { display: block; font-size: 14px; color: var(--text-faint); font-weight: 400; }
-  .gig-artist { font-size: 20px; line-height: 1.3; overflow-wrap: anywhere; }
-  .gig-place { font-size: 16px; color: var(--text-soft); overflow-wrap: anywhere; }
-  .gig-note { font-size: 15px; font-style: italic; color: var(--text-faint); overflow-wrap: anywhere; }
-  .gig-link {
-    font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase;
-    min-height: var(--tap); display: inline-flex; align-items: center;
-    border-bottom: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
-  }
-  .gig-link:hover { border-bottom-color: var(--text); }
-  .gig-play { grid-column: 2 / -1; margin-top: 10px; }
-  .gig-player { grid-column: 1 / -1; margin-top: 12px; border-radius: 10px; overflow: hidden; background: #000; border: 1px solid var(--hairline); }
-  .gig-player iframe { width: 100%; height: 100%; border: 0; }
-  .play {
-    font: inherit; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase;
-    min-height: var(--tap); padding: 0 16px;
-    display: inline-flex; align-items: center; gap: 8px;
-    color: var(--gold); background: color-mix(in srgb, white 5%, transparent);
-    border: 1px solid color-mix(in srgb, var(--gold) 42%, transparent); border-radius: 10px; cursor: pointer;
-    transition: background var(--step) var(--ease), color var(--step) var(--ease), border-color var(--step) var(--ease);
-  }
-  .play:hover { color: var(--text); background: color-mix(in srgb, white 11%, transparent); border-color: var(--text); }
-
-  /* Latausviive näytetään luurankona, jotta sivu ei hyppää (CLS). */
-  .skel { display: flex; flex-direction: column; gap: 10px; }
-  .skel div {
-    height: 86px; border-radius: 12px;
-    border: 1px solid color-mix(in srgb, white 8%, transparent);
-    background: linear-gradient(90deg, color-mix(in srgb, white 4%, transparent) 25%, color-mix(in srgb, white 9%, transparent) 37%, color-mix(in srgb, white 4%, transparent) 63%);
-    background-size: 400% 100%;
-    animation: shimmer 1.5s linear infinite;
-  }
-  @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
-
-  .notice {
-    display: none; gap: 10px; align-items: center;
-    font-size: 16px; color: var(--ok);
-    padding: 12px 16px; border-radius: 10px;
-    background: color-mix(in srgb, var(--ok) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--ok) 34%, transparent);
-  }
-  .notice.on { display: flex; }
-
-  /* ── Lomake ja ikkuna ─────────────────────────────────────────────── */
-  .dialog {
-    padding: 0; border: 0; background: none; color: var(--text); font: inherit;
-    width: min(660px, calc(100vw - 20px)); max-height: calc(100dvh - 20px);
-    overflow: visible;
-  }
-  .dialog::backdrop { background: rgb(0 0 0 / 0.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-  .sheet {
-    background: var(--glass-firm);
-    -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
-    border: 1px solid var(--hairline); border-radius: 16px;
-    box-shadow: var(--shadow-3), inset 0 1px 0 color-mix(in srgb, white 16%, transparent);
-    padding: clamp(20px, 3.6vw, 30px);
-    display: flex; flex-direction: column; gap: 18px;
-    max-height: calc(100dvh - 20px); overflow: auto;
-  }
-  .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .x {
-    font: inherit; font-size: 22px; line-height: 1;
-    width: var(--tap); height: var(--tap); flex: none;
-    display: inline-flex; align-items: center; justify-content: center;
-    color: var(--text-soft); background: none; border: 1px solid transparent; border-radius: 10px; cursor: pointer;
-    transition: background var(--step) var(--ease), color var(--step) var(--ease);
-  }
-  .x:hover { color: var(--text); background: color-mix(in srgb, white 10%, transparent); }
-
-  .form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-  .field.full { grid-column: 1 / -1; }
-  .field .t { font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--text-faint); }
-  .field .hint { font-size: 14px; font-style: italic; color: var(--text-faint); }
-  .field input {
-    font: inherit; font-size: 17px; color: var(--text);
-    min-height: var(--tap); padding: 10px 14px; width: 100%;
-    background: color-mix(in srgb, black 42%, transparent);
-    border: 1px solid var(--hairline); border-radius: 10px;
-    transition: border-color var(--step) var(--ease), background var(--step) var(--ease);
-  }
-  .field input::placeholder { color: color-mix(in srgb, var(--text-faint) 72%, transparent); }
-  .field input:hover { border-color: color-mix(in srgb, white 30%, transparent); }
-  .field input:focus { border-color: var(--gold); background: color-mix(in srgb, black 55%, transparent); }
-  /* Virhe ei erotu pelkällä värillä: mukana on myös ⚠-merkki ja teksti. */
-  .field.bad input { border-color: var(--danger); }
-  .field .err { display: none; font-size: 14px; color: var(--danger); }
-  .field.bad .err { display: block; }
-
-  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
-  .actions { grid-column: 1 / -1; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-  .form-status { grid-column: 1 / -1; font-size: 16px; color: var(--text-soft); }
-  .form-status.err { color: var(--danger); }
-
-  /* ── Yhteystiedot ja alatunniste ──────────────────────────────────── */
-  .booking { display: flex; flex-wrap: wrap; gap: 20px 40px; align-items: flex-end; justify-content: space-between; }
-  .col { display: flex; flex-direction: column; gap: 4px; }
-  .col .t { font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--text-faint); }
-  .col .big { font-size: clamp(24px, 3.4vw, 30px); line-height: 1.15; }
-  .col .big.small { font-size: clamp(18px, 2.6vw, 23px); overflow-wrap: anywhere; }
-  .col .big a { display: inline-flex; align-items: center; min-height: var(--tap); }
-  .social { display: flex; gap: 6px 22px; flex-wrap: wrap; align-items: center; }
-  .social a {
-    font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase;
-    min-height: var(--tap); display: inline-flex; align-items: center;
-    border-bottom: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
-  }
-  .social a:hover { border-bottom-color: var(--text); }
-
-  .next-cta { max-width: 860px; margin: 0 auto; display: flex; justify-content: center; padding-top: 26px; }
-  .prose { display: flex; flex-direction: column; gap: 16px; }
-  .prose h3 { font-size: 11px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--gold); font-weight: 700; margin-top: 6px; }
-  .prose p { font-size: 17px; line-height: 1.6; color: var(--text-soft); text-wrap: pretty; }
-  .prose .lead { font-size: 19px; font-style: italic; color: var(--text); }
-  .prose ol, .prose ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
-  .prose li { font-size: 17px; line-height: 1.55; color: var(--text-soft); display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: baseline; }
-  .prose li b { color: var(--text); }
-  .prose li .n { color: var(--gold); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .prose li .n.done { color: var(--ok); }
-
-  .footer { max-width: 860px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 22px 0 0; color: var(--text-faint); }
-  .footer .line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--hairline), transparent); }
-  .footer .text { font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase; text-align: center; }
-}
-
-@layer state {
-  @media (max-width: 560px) {
-    .form { grid-template-columns: 1fr; }
-    .gig { grid-template-columns: 1fr; }
-    .gig-play { grid-column: 1; }
-    .nav .who { display: none; }
-    .nav-inner { gap: 6px 10px; justify-content: space-between; }
-  }
-
-  /* Selain ilman lasitukea saa umpinaisen pinnan. */
-  @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-    .glass, .sheet { background: color-mix(in srgb, var(--surface) 96%, black); }
-    .nav { background: color-mix(in srgb, var(--bg-deep) 97%, black); }
-  }
-
-  /* Käyttäjä on pyytänyt vähemmän läpinäkyvyyttä. */
-  @media (prefers-reduced-transparency: reduce) {
-    .glass, .sheet { background: color-mix(in srgb, var(--surface) 97%, black); -webkit-backdrop-filter: none; backdrop-filter: none; }
-    .nav { background: color-mix(in srgb, var(--bg-deep) 98%, black); -webkit-backdrop-filter: none; backdrop-filter: none; }
-    .dialog::backdrop { background: rgb(0 0 0 / 0.94); -webkit-backdrop-filter: none; backdrop-filter: none; }
-  }
-
-  /* Käyttäjä on pyytänyt vähemmän liikettä. */
-  @media (prefers-reduced-motion: reduce) {
-    html { scroll-behavior: auto; }
-    *, *::before, *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-    }
-    .btn:hover, .gig:hover { transform: none; }
-  }
-
-  /* Suuri kontrasti: ohuet rajat vahvistuvat. */
-  @media (prefers-contrast: more) {
-    :root { --hairline: color-mix(in srgb, white 52%, transparent); --text-faint: oklch(0.85 0.006 70); }
-    .glass, .sheet, .gig { background: color-mix(in srgb, var(--surface) 96%, black); }
-  }
-}
 </style>
 </head>
 <body>
@@ -418,482 +21,494 @@
 
 <nav class="nav" aria-label="Sivun osat">
   <div class="nav-inner">
-    <img src="img/logo.png" width="443" height="422" alt="">
-    <span class="who">Ray Jone &amp; The Nekalabama Thunderstorm</span>
-    <a href="#keikat">Keikat</a>
-    <a href="#kuuntele">Kuuntele</a>
-    <a href="#booking">Booking</a>
+    <a class="brand" href="." id="brand-link">
+      <img src="img/logo.png" width="443" height="422" alt="">
+      BandRock
+    </a>
+    <span id="nav-band-links"></span>
+    <button class="link" type="button" id="info-open" style="background:none;border:0;cursor:pointer;font:inherit">Mikä on BandRock?</button>
   </div>
 </nav>
 
 <div class="page">
-  <main class="wrap" id="sisalto">
-
-    <header class="glass hero pad">
-      <h1><img class="hero-logo" src="img/logo-full.jpg" width="1205" height="548" alt="Ray Jone &amp; The Nekalabama Thunderstorm"></h1>
-      <p class="tagline">for the long drives, late nights and lives lived full</p>
-      <div class="amber-rule"></div>
-      <p class="genres">Country soul · Blues · Americana</p>
-    </header>
-
-    <figure class="glass photo">
-      <img src="img/band.jpg" width="1400" height="942" alt="Ray Jone &amp; The Nekalabama Thunderstorm" loading="lazy">
-      <figcaption class="photo-caption">
-        <p class="credit">Kuva: Elmo Romppanen</p>
-        <ul class="members">
-          <li><b>Ray Jone</b> — Vocals &amp; Acoustic Guitar</li>
-          <li><b>Mikko Laine</b> — Electric Guitar</li>
-          <li><b>Antti Romppanen</b> — Drums</li>
-          <li><b>Tommi Lukinmaa</b> — Upright Bass</li>
-        </ul>
-      </figcaption>
-    </figure>
-
-    <section class="glass pad bio" aria-labelledby="bio-h">
-      <h2 class="label" id="bio-h">Bio</h2>
-      <p>Ray Jone &amp; The Nekalabama Thunderstorm blend raw country soul with deep blues roots, creating a sound that’s as weathered and honest as the stories they tell.</p>
-      <p>The band craft music that feels both grounded and electrified — like a thunderstorm rolling through a southern backroad town.</p>
-      <p>Heartfelt, gritty, and steeped in Americana, Ray Jone and The Nekalabama Thunderstorm offer songs for the long drives, late nights, and lives lived full.</p>
-    </section>
-
-    <section class="glass pad listen" id="kuuntele" aria-labelledby="listen-h">
-      <div class="head">
-        <h2 class="label" id="listen-h">Kuuntele · Listen</h2>
-        <em>Uusin single</em>
-      </div>
-      <div class="media">
-        <div class="cover">
-          <img src="img/madrid.jpg" width="700" height="700" alt="Madrid – singlen kansi" loading="lazy">
-          <div>
-            <div class="title">Madrid</div>
-            <div class="kind">Single</div>
-          </div>
-        </div>
-        <div class="video">
-          <iframe src="https://www.youtube-nocookie.com/embed/GKlZrIftTZ8" title="Madrid – musiikkivideo" allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" loading="lazy"></iframe>
-        </div>
-      </div>
-      <div class="spotify" id="spotify-box">
-        <button class="play" type="button" id="spotify-play">▶ Kuuntele Spotifyssa</button>
-        <noscript><a class="gig-link" href="https://open.spotify.com/artist/6MZ5sOhKDci1bYweyqJBj7" target="_blank" rel="noreferrer">Avaa Spotifyssa</a></noscript>
-      </div>
-    </section>
-
-    <section class="glass pad" id="keikat" aria-labelledby="gigs-h">
-      <div class="head">
-        <h2 class="label" id="gigs-h">Keikat · Gigs</h2>
-        <button class="btn small" type="button" id="add-open">+ Lisää keikka</button>
-      </div>
-      <p class="notice" id="notice" role="status"></p>
-      <p class="muted" id="gigs-status" aria-live="polite"></p>
-      <noscript><p class="muted">Keikkalista vaatii JavaScriptin.</p></noscript>
-      <div class="skel" id="skel" aria-hidden="true" hidden><div></div><div></div></div>
-      <!-- Valmis keikkahistoria kovakoodattuna, kunnes Worker on julkaistu (README kohta 3).
-           Kun API_URL vaihtuu oikeaksi, loadGigs() korvaa tämän D1:n sisällöllä. -->
-      <ol class="gigs" id="gigs">
-        <li class="gig-year">2027</li>
-        <li class="gig">
-          <div class="gig-when"><span class="gig-date">la 3.7.2027</span></div>
-          <div class="gig-what"><div class="gig-artist">Kullaa Rock n Roll Rumble</div></div>
-        </li>
-
-        <li class="gig-year">2026</li>
-        <li class="gig">
-          <div class="gig-when"><span class="gig-date">la 17.10.2026</span></div>
-          <div class="gig-what"><div class="gig-artist">Pub Armo</div><div class="gig-note">RJNT Duo</div></div>
-        </li>
-        <li class="gig">
-          <div class="gig-when"><span class="gig-date">la 26.9.2026</span></div>
-          <div class="gig-what"><div class="gig-artist">Haikan lava</div><div class="gig-note">Yksityistilaisuus</div></div>
-        </li>
-        <li class="gig past">
-          <div class="gig-when"><span class="gig-date">la 25.7.2026</span></div>
-          <div class="gig-what"><div class="gig-artist">Vastavirta klubi · Pispala</div></div>
-        </li>
-        <li class="gig past">
-          <div class="gig-when"><span class="gig-date">pe 24.7.2026</span></div>
-          <div class="gig-what"><div class="gig-artist">Bar Loose · Helsinki</div></div>
-        </li>
-        <li class="gig past">
-          <div class="gig-when"><span class="gig-date">to 11.6.2026</span></div>
-          <div class="gig-what"><div class="gig-artist">Frank The Lobster</div></div>
-        </li>
-        <li class="gig past">
-          <div class="gig-when"><span class="gig-date">la 18.4.2026</span></div>
-          <div class="gig-what"><div class="gig-artist">Varjobaari · Hervanta</div><div class="gig-note">RJNT Trio</div></div>
-        </li>
-        <li class="gig past">
-          <div class="gig-when"><span class="gig-date">la 21.3.2026</span></div>
-          <div class="gig-what"><div class="gig-artist">Oluthuone · Tampere</div><div class="gig-note">RJNT Trio</div></div>
-        </li>
-        <li class="gig past">
-          <div class="gig-when"><span class="gig-date">to 19.3.2026</span></div>
-          <div class="gig-what"><div class="gig-artist">Frank The Lobster · Tampere</div><div class="gig-note">RJNT Trio</div></div>
-        </li>
-        <li class="gig past">
-          <div class="gig-when"><span class="gig-date">la 7.3.2026</span></div>
-          <div class="gig-what"><div class="gig-artist">Kulttuuriravintola Railo</div></div>
-        </li>
-
-        <li class="gig-year">2025</li>
-        <li class="gig past">
-          <div class="gig-when"><span class="gig-date">pe 19.12.2025</span></div>
-          <div class="gig-what"><div class="gig-artist">Pub Armo</div></div>
-        </li>
-        <li class="gig past">
-          <div class="gig-when"><span class="gig-date">la 13.12.2025</span></div>
-          <div class="gig-what"><div class="gig-artist">Kulttuuriravintola Railo</div><div class="gig-note">Yksityistilaisuus</div></div>
-        </li>
-        <li class="gig past">
-          <div class="gig-when"><span class="gig-date">pe 28.11.2025</span></div>
-          <div class="gig-what"><div class="gig-artist">Bar Groove · Tampere</div></div>
-        </li>
-        <li class="gig past">
-          <div class="gig-when"><span class="gig-date">to 16.10.2025</span></div>
-          <div class="gig-what"><div class="gig-artist">Pub Armo · Tampere</div></div>
-        </li>
-        <li class="gig past">
-          <div class="gig-when"><span class="gig-date">la 20.9.2025</span></div>
-          <div class="gig-what"><div class="gig-artist">Kulttuuriravintola Railo · Nekala</div></div>
-        </li>
-        <li class="gig past">
-          <div class="gig-when"><span class="gig-date">la 14.6.2025</span></div>
-          <div class="gig-what"><div class="gig-artist">Bar Groove · Tampere</div></div>
-        </li>
-      </ol>
-    </section>
-
-    <section class="glass pad" id="booking" aria-labelledby="booking-h">
-      <h2 class="label" id="booking-h">Keikkamyynti · Booking</h2>
-      <div class="booking">
-        <div class="col">
-          <div class="t">Puhelin</div>
-          <div class="big"><a href="tel:+358408121751">040 812 1751</a></div>
-        </div>
-        <div class="col">
-          <div class="t">Sähköposti</div>
-          <div class="big small"><a href="mailto:nekalabama@gmail.com">nekalabama@gmail.com</a></div>
-        </div>
-        <div class="social">
-          <a href="https://www.facebook.com/profile.php?id=61590496347140" target="_blank" rel="noreferrer">Facebook</a>
-          <a href="https://www.instagram.com/nekalabama_music_official/" target="_blank" rel="noreferrer">Instagram</a>
-          <a href="https://open.spotify.com/artist/6MZ5sOhKDci1bYweyqJBj7" target="_blank" rel="noreferrer">Spotify</a>
-          <a href="https://www.youtube.com/watch?v=GKlZrIftTZ8" target="_blank" rel="noreferrer">YouTube</a>
-        </div>
-      </div>
-    </section>
-
+  <main class="wrap wide" id="sisalto">
+    <div id="app"></div>
   </main>
 
   <footer class="footer">
     <div class="line"></div>
-    <div class="text">Ray Jone &amp; The Nekalabama Thunderstorm</div>
+    <div class="text">BandRock</div>
     <div class="line"></div>
   </footer>
-
-  <div class="next-cta">
-    <button class="btn" type="button" id="next-open">Mitä seuraavaksi</button>
-  </div>
 </div>
 
-<dialog class="dialog" id="next-dialog" aria-labelledby="next-title">
+<!-- ── "Mikä on BandRock?" ──────────────────────────────────────────────── -->
+<dialog class="dialog wide" id="info-dialog" aria-labelledby="info-title">
   <div class="sheet">
     <div class="sheet-head">
-      <h2 class="label" id="next-title">Mitä seuraavaksi</h2>
-      <button class="x" type="button" id="next-x" aria-label="Sulje">✕</button>
+      <h2 class="label" id="info-title">Mikä on BandRock?</h2>
+      <button class="x" type="button" id="info-x" aria-label="Sulje">✕</button>
     </div>
     <div class="prose">
-      <p class="lead">Tämä sivu on nyt yhden bändin sivu. Seuraavaksi siitä tehdään pohja, jolla kuka tahansa saa oman samanlaisen.</p>
-
-      <h3>Idea lyhyesti</h3>
-      <p>Kuvittele ilmoitustaulu treenikämpän seinällä. Siinä on lappuja: bändejä, keikkoja, “rumpali haussa”, “vahvistin myynnissä”. Etusivusta tulee se taulu, ja kun klikkaat lappua, aukeaa tämännäköinen sivu. Tämä sivu on siis yksi lappu sadan joukossa.</p>
+      <p class="lead">Ilmoitustaulu bändeille. Jokaisella bändillä on oma sivu — kuka esiintyy, mitä kuulostaa ja milloin näkee livenä.</p>
 
       <h3>Näin se toimii</h3>
       <ol>
-        <li><span class="n">1</span><span><b>Kuka tahansa saa lisätä.</b> Ei tunnusta, ei salasanaa, ei sähköpostia. Täytät lomakkeen ja ilmoitus on heti taululla.</span></li>
-        <li><span class="n">2</span><span><b>Saat viisi merkkiä muistiin</b>, esimerkiksi K7M2P. Sillä muokkaat tai poistat oman ilmoituksesi myöhemmin. Saat myös valmiin linkin, jonka voi tallentaa puhelimeen.</span></li>
-        <li><span class="n">3</span><span><b>Koodia ei voi palauttaa.</b> Jos se häviää, ilmoitusta ei pysty muokkaamaan. Silloin tehdään vain uusi. Tämä on hinta siitä, ettei tarvitse luoda tiliä.</span></li>
-        <li><span class="n">4</span><span><b>Ilmoituksen löytää suodattimella.</b> Valitset tyypin, kaupungin ja ajankohdan, tai kirjoitat hakuun vaikka “blues”.</span></li>
-        <li><span class="n">5</span><span><b>Kuvan saa liittää.</b> Puhelin poistaa kuvasta automaattisesti sijaintitiedon, ettei kotiosoite lähde mukaan kuvan kylkeen.</span></li>
+        <li><span class="n">1</span><span><b>Kuka tahansa saa luoda sivun.</b> Ei tunnusta, ei salasanaa. Täytät lomakkeen ja sivu on heti taululla.</span></li>
+        <li><span class="n">2</span><span><b>Saat viisi merkkiä muistiin.</b> Sillä muokkaat tai poistat oman sivusi myöhemmin. Koodia ei voi palauttaa, jos se häviää — silloin tehdään uusi sivu.</span></li>
+        <li><span class="n">3</span><span><b>Sivun löytää suodattimella</b> — tyyppi, kaupunki, ajankohta tai vapaa haku.</span></li>
+        <li><span class="n">4</span><span><b>Jokaisella sivulla oma osoite:</b> bandrock-osoite kauttaviivalla ja bändin nimellä, esim. <code>/ray-jone</code>.</span></li>
       </ol>
 
-      <h3>Missä kaikki pyörii</h3>
-      <p>Sivu on GitHubissa ja ilmoitukset Cloudflaressa, molemmat ilmaisella tasolla. Ei omaa palvelinta, ei tietokantaa, ei kuukausimaksua. Ilmoitukset ovat tiedostoja, vähän kuin kansio jossa on lappuja.</p>
-
-      <h3>Järjestys</h3>
-      <ul>
-        <li><span class="n done">✓</span><span>Tämä sivu: ilme, keikkalista, soittimet ja yhteystiedot</span></li>
-        <li><span class="n">1</span><span>Sivu muuttuu pohjaksi — näyttää edelleen täsmälleen samalta</span></li>
-        <li><span class="n">2</span><span>Ilmoitusten tallennus ja koodit</span></li>
-        <li><span class="n">3</span><span>Ilmoitustaulu ja suodattimet</span></li>
-        <li><span class="n">4</span><span>Lisäys ja muokkaus koodilla</span></li>
-        <li><span class="n">5</span><span>Kuvat</span></li>
-        <li><span class="n">6</span><span>Asiattoman ilmoituksen piilotus</span></li>
-      </ul>
-      <p>Jokaisen vaiheen jälkeen pysähdytään katsomaan, miltä näyttää, ennen kuin jatketaan.</p>
+      <h3>Esimerkki</h3>
+      <p>Ray Jone &amp; The Nekalabama Thunderstorm on taulun ensimmäinen bändi. Näin sen kortti näyttää ruudukossa:</p>
+      <div class="preview-card" id="info-preview"></div>
 
       <h3>Mitä tämä ei ole</h3>
-      <p>Ei lipunmyyntiä, ei kirjautumista, ei kommentteja eikä viestejä. Yhteydenotto tapahtuu sillä tavalla, jonka ilmoittaja itse kirjoittaa ilmoitukseensa — ja se näkyy kaikille, joten sinne laitetaan vain se mitä uskaltaa julkaista.</p>
+      <p>Ei lipunmyyntiä, ei kirjautumista, ei viestejä. Yhteystieto on se minkä bändi itse kirjoittaa sivulleen, ja se näkyy kaikille.</p>
     </div>
     <div class="actions">
-      <button class="btn ghost" type="button" id="next-close">Sulje</button>
+      <button class="btn ghost" type="button" id="info-close">Sulje</button>
     </div>
   </div>
 </dialog>
 
-<dialog class="dialog" id="gig-dialog" aria-labelledby="dlg-title">
+<!-- ── Luo uusi bändi ───────────────────────────────────────────────────── -->
+<dialog class="dialog" id="create-dialog" aria-labelledby="create-title">
   <div class="sheet">
     <div class="sheet-head">
-      <h2 class="label" id="dlg-title">Lisää keikka · Add a gig</h2>
+      <h2 class="label" id="create-title">Luo uusi bändi</h2>
+      <button class="x" type="button" id="create-x" aria-label="Sulje">✕</button>
+    </div>
+    <form class="form" id="create-form" novalidate>
+      <label class="field" data-for="type"><span class="t">Tyyppi</span>
+        <select name="type">
+          <option value="bandi">Bändi</option>
+          <option value="keikka">Keikka</option>
+          <option value="haku">Haku (esim. rumpali haussa)</option>
+          <option value="myynti">Myynti (esim. soitin)</option>
+        </select>
+      </label>
+      <label class="field" data-for="city"><span class="t">Kaupunki</span><input type="text" name="city" maxlength="60" autocomplete="off"></label>
+      <label class="field full" data-for="title"><span class="t">Nimi *</span><input type="text" name="title" required maxlength="80" autocomplete="off"><span class="err">⚠ <span class="msg"></span></span></label>
+      <label class="field full" data-for="tagline"><span class="t">Kuvaus</span><textarea name="tagline" maxlength="400" placeholder="Lyhyt esittely tai iskulause"></textarea></label>
+      <label class="field full" data-for="tags"><span class="t">Tyylilajit</span><input type="text" name="tags" maxlength="120" placeholder="esim. country soul, blues" autocomplete="off">
+        <span class="hint">Pilkulla eroteltuna.</span></label>
+      <label class="field full" data-for="email"><span class="t">Yhteystieto (näkyy julkisesti)</span><input type="email" name="email" maxlength="120" autocomplete="off"></label>
+      <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+      <div class="actions">
+        <button class="btn" type="submit" id="create-submit">Luo sivu</button>
+        <button class="btn ghost" type="button" id="create-cancel">Peruuta</button>
+      </div>
+      <p class="form-status" id="create-status" role="status"></p>
+    </form>
+  </div>
+</dialog>
+
+<!-- ── Koodi näytetään kerran ("luonnin" jälkeen, kun Worker on käytössä) ─ -->
+<dialog class="dialog" id="code-dialog" aria-labelledby="code-title">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2 class="label" id="code-title">Muistiin talteen</h2>
+      <button class="x" type="button" id="code-x" aria-label="Sulje">✕</button>
+    </div>
+    <div class="code-reveal">
+      <p>Tällä koodilla muokkaat tai poistat sivun myöhemmin:</p>
+      <div class="code-big" id="code-value">00000</div>
+      <p class="code-warn">Koodia ei näytetä enää uudelleen eikä sitä voi palauttaa. Ota kuvakaappaus tai kirjoita se ylös.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" type="button" id="code-done">Selvä, jatka</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ── Muokkaa koodilla: vaihe 1, koodin syöttö ─────────────────────────── -->
+<dialog class="dialog" id="edit-code-dialog" aria-labelledby="edit-code-title">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2 class="label" id="edit-code-title">Muokkaa sivua</h2>
+      <button class="x" type="button" id="edit-code-x" aria-label="Sulje">✕</button>
+    </div>
+    <form class="form" id="edit-code-form" novalidate>
+      <label class="field full" data-for="code"><span class="t">5-merkkinen koodi</span>
+        <input type="text" name="code" maxlength="5" autocomplete="off" autocapitalize="characters" placeholder="esim. 00000">
+        <span class="err">⚠ <span class="msg"></span></span></label>
+      <div class="actions">
+        <button class="btn" type="submit">Jatka</button>
+        <button class="btn ghost" type="button" id="edit-code-cancel">Peruuta</button>
+      </div>
+      <p class="form-status" id="edit-code-status" role="status"></p>
+    </form>
+  </div>
+</dialog>
+
+<!-- ── Muokkaa koodilla: vaihe 2, esitäytetty lomake ────────────────────── -->
+<dialog class="dialog" id="edit-form-dialog" aria-labelledby="edit-form-title">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2 class="label" id="edit-form-title">Muokkaa: <span id="edit-form-name"></span></h2>
+      <button class="x" type="button" id="edit-form-x" aria-label="Sulje">✕</button>
+    </div>
+    <form class="form" id="edit-form" novalidate>
+      <label class="field" data-for="city"><span class="t">Kaupunki</span><input type="text" name="city" maxlength="60" autocomplete="off"></label>
+      <label class="field full" data-for="title"><span class="t">Nimi *</span><input type="text" name="title" required maxlength="80" autocomplete="off"></label>
+      <label class="field full" data-for="tagline"><span class="t">Kuvaus</span><textarea name="tagline" maxlength="400"></textarea></label>
+      <label class="field full" data-for="tags"><span class="t">Tyylilajit</span><input type="text" name="tags" maxlength="120" autocomplete="off">
+        <span class="hint">Pilkulla eroteltuna.</span></label>
+      <div class="actions">
+        <button class="btn" type="submit">Tallenna</button>
+        <button class="btn ghost" type="button" id="edit-form-cancel">Peruuta</button>
+      </div>
+      <p class="form-status" id="edit-form-status" role="status"></p>
+    </form>
+  </div>
+</dialog>
+
+<!-- ── Lisää keikka (bändin omalle sivulle) ─────────────────────────────── -->
+<dialog class="dialog" id="gig-dialog" aria-labelledby="gig-dlg-title">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2 class="label" id="gig-dlg-title">Lisää keikka · Add a gig</h2>
       <button class="x" type="button" id="gig-x" aria-label="Sulje">✕</button>
     </div>
     <form class="form" id="gig-form" novalidate>
       <label class="field" data-for="date"><span class="t">Päivä *</span><input type="date" name="date" required><span class="err">⚠ <span class="msg"></span></span></label>
       <label class="field" data-for="time"><span class="t">Kellonaika</span><input type="time" name="time"><span class="err">⚠ <span class="msg"></span></span></label>
-      <label class="field full" data-for="artist"><span class="t">Kuka esiintyy *</span><input type="text" name="artist" required maxlength="80" autocomplete="off"><span class="err">⚠ <span class="msg"></span></span></label>
       <label class="field" data-for="venue"><span class="t">Paikka *</span><input type="text" name="venue" required maxlength="80" autocomplete="off"><span class="err">⚠ <span class="msg"></span></span></label>
-      <label class="field" data-for="city"><span class="t">Kaupunki *</span><input type="text" name="city" required maxlength="60" autocomplete="off"><span class="err">⚠ <span class="msg"></span></span></label>
-      <label class="field full" data-for="note"><span class="t">Lisätietoa</span><input type="text" name="note" maxlength="300" placeholder="esim. vapaa pääsy, ovet 19"><span class="err">⚠ <span class="msg"></span></span></label>
+      <label class="field" data-for="city"><span class="t">Kaupunki</span><input type="text" name="city" maxlength="60" autocomplete="off"></label>
+      <label class="field full" data-for="note"><span class="t">Lisätietoa</span><input type="text" name="note" maxlength="300" placeholder="esim. vapaa pääsy, ovet 19"></label>
       <label class="field full" data-for="url"><span class="t">Info- tai lippulinkki</span><input type="url" name="url" maxlength="300" placeholder="https://"><span class="err">⚠ <span class="msg"></span></span></label>
-      <label class="field full" data-for="media"><span class="t">Musiikki tai video</span><input type="url" name="media" maxlength="300" placeholder="https://open.spotify.com/track/…">
-        <span class="hint">YouTube-, Spotify- tai SoundCloud-linkki. Soitin näkyy ilmoituksessa.</span><span class="err">⚠ <span class="msg"></span></span></label>
       <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
       <div class="actions">
         <button class="btn" type="submit" id="gig-submit">Lisää keikka</button>
         <button class="btn ghost" type="button" id="gig-cancel">Peruuta</button>
       </div>
-      <p class="form-status" id="form-status" role="status"></p>
+      <p class="form-status" id="gig-form-status" role="status"></p>
     </form>
   </div>
 </dialog>
 
-<script>
-(function () {
-  'use strict';
+<script type="module">
+import { SITE_BASE, restoreFromRedirect, parseRoute, pathFor } from './assets/router.js';
+import { renderDetail, renderCard, renderCreateCard, slugify, fmtDateISO, el } from './assets/render.js';
 
-  // Keikkalistan Worker. Vaihda tähän Workerin osoite, kun se on julkaistu (README kohta 3).
-  var API_URL = 'https://nekalabama-gigs.REPLACE-ME.workers.dev/gigs';
-  // Paikallisessa kehityksessä: http://localhost:8080/?api=http://localhost:8787/gigs
-  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-    var override = new URLSearchParams(location.search).get('api');
-    if (override) API_URL = override;
+restoreFromRedirect();
+
+var app = document.getElementById('app');
+var currentPoster = null;   // täysi data kun ollaan bändin sivulla
+var currentIndex = null;    // ruudukon summaus (data/index.json), välimuistissa
+
+function setTitle(t) { document.getElementById('page-title').textContent = t; }
+
+function focusMain() {
+  var h = app.querySelector('h1, h2');
+  if (h) { h.setAttribute('tabindex', '-1'); h.focus(); }
+}
+
+async function loadIndex() {
+  if (currentIndex) return currentIndex;
+  var res = await fetch('data/index.json', { cache: 'no-store' });
+  currentIndex = await res.json();
+  return currentIndex;
+}
+
+// ── Ruudukko ──────────────────────────────────────────────────────────────
+async function showGrid() {
+  currentPoster = null;
+  setTitle('BandRock — bändi-ilmoitustaulu');
+  document.getElementById('nav-band-links').replaceChildren();
+
+  var wrap = el('div');
+  var hero = el('header', 'glass pad landing-hero');
+  var h1 = el('h1', 'landing-title');
+  h1.setAttribute('aria-label', 'BandRock');
+  h1.appendChild(document.createTextNode('BAND'));
+  var bolt = el('span', 'bolt', '⚡');
+  bolt.setAttribute('aria-hidden', 'true');
+  h1.appendChild(bolt);
+  h1.appendChild(document.createTextNode('ROCK'));
+  hero.appendChild(h1);
+  hero.appendChild(el('p', 'landing-sub', 'Ilmoitustaulu bändeille: keikat, esittelyt ja yhteystiedot. Luo oma sivusi ilman kirjautumista.'));
+  var actions = el('div', 'landing-actions');
+  var createBtn = el('button', 'btn big', '+ Luo uusi bändi');
+  createBtn.type = 'button';
+  createBtn.addEventListener('click', openCreateDialog);
+  actions.appendChild(createBtn);
+  hero.appendChild(actions);
+  wrap.appendChild(hero);
+
+  var filterSec = el('section', 'glass pad');
+  var filters = el('div', 'filters');
+  filters.innerHTML =
+    '<label class="field search"><span class="t">Haku</span><input type="search" id="f-search" placeholder="nimi, paikka, kaupunki…"></label>' +
+    '<label class="field"><span class="t">Tyyppi</span><select id="f-type"><option value="">Kaikki</option><option value="bandi">Bändi</option><option value="keikka">Keikka</option><option value="haku">Haku</option><option value="myynti">Myynti</option></select></label>' +
+    '<label class="field"><span class="t">Kaupunki</span><select id="f-city"><option value="">Kaikki</option></select></label>' +
+    '<label class="field"><span class="t">Ajankohta</span><select id="f-time"><option value="all">Kaikki</option><option value="upcoming">Tulevat</option><option value="month">Tässä kuussa</option></select></label>';
+  filterSec.appendChild(filters);
+  wrap.appendChild(filterSec);
+
+  var gridSec = el('div', 'grid');
+  gridSec.id = 'grid';
+  wrap.appendChild(gridSec);
+
+  app.replaceChildren(wrap);
+  focusMain();
+
+  var items = [];
+  try { items = await loadIndex(); } catch (e) { /* tyhjä ruudukko jää näkyviin */ }
+
+  var citySel = document.getElementById('f-city');
+  Array.from(new Set(items.map(function (p) { return p.city; }).filter(Boolean))).sort().forEach(function (c) {
+    var o = document.createElement('option'); o.value = c; o.textContent = c; citySel.appendChild(o);
+  });
+
+  function draw() {
+    var q = document.getElementById('f-search').value.trim().toLowerCase();
+    var type = document.getElementById('f-type').value;
+    var city = document.getElementById('f-city').value;
+    var time = document.getElementById('f-time').value;
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    var filtered = items.filter(function (p) {
+      if (type && p.type !== type) return false;
+      if (city && p.city !== city) return false;
+      if (q) {
+        var hay = [p.title, p.city, p.tagline].concat(p.tags || []).join(' ').toLowerCase();
+        if (hay.indexOf(q) === -1) return false;
+      }
+      if (time !== 'all' && p.nextGig) {
+        var d = new Date(p.nextGig.date + 'T00:00:00');
+        if (time === 'upcoming' && d < today) return false;
+        if (time === 'month' && (d < today || d > monthEnd)) return false;
+      }
+      return true;
+    });
+
+    gridSec.replaceChildren();
+    filtered.forEach(function (p) {
+      var card = renderCard(p);
+      card.addEventListener('click', function () { navigate(p.id); });
+      gridSec.appendChild(card);
+    });
+    var createCard = renderCreateCard();
+    createCard.addEventListener('click', openCreateDialog);
+    gridSec.appendChild(createCard);
+    if (!filtered.length) gridSec.prepend(el('div', 'empty-grid', 'Ei osumia suodattimilla.'));
   }
-  var CONFIGURED = API_URL.indexOf('REPLACE-ME') === -1;
 
-  var WEEKDAYS = ['su', 'ma', 'ti', 'ke', 'to', 'pe', 'la'];
-  var FIELD_LABELS = { date: 'Päivä', time: 'Kellonaika', artist: 'Kuka esiintyy', venue: 'Paikka', city: 'Kaupunki', url: 'Linkki', media: 'Musiikki tai video', note: 'Lisätietoa' };
-  // Soittimet: vain nämä osoitteet upotetaan (Worker rakentaa osoitteen, tämä on toinen lukko).
-  var PLAYERS = {
-    'www.youtube-nocookie.com': { label: 'YouTube', ratio: true, allow: 'accelerometer; clipboard-write; encrypted-media; picture-in-picture; web-share' },
-    'open.spotify.com': { label: 'Spotify', height: 152, allow: 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture' },
-    'w.soundcloud.com': { label: 'SoundCloud', height: 166, allow: 'autoplay' }
-  };
+  ['f-search', 'f-type', 'f-city', 'f-time'].forEach(function (id) {
+    document.getElementById(id).addEventListener('input', draw);
+    document.getElementById(id).addEventListener('change', draw);
+  });
+  draw();
+}
 
-  var listEl = document.getElementById('gigs');
-  var statusEl = document.getElementById('gigs-status');
-  var skel = document.getElementById('skel');
-  var form = document.getElementById('gig-form');
-  var dialog = document.getElementById('gig-dialog');
-  var openBtn = document.getElementById('add-open');
-  var notice = document.getElementById('notice');
-  var submitBtn = document.getElementById('gig-submit');
-  var formStatus = document.getElementById('form-status');
+// ── Bändin sivu ──────────────────────────────────────────────────────────
+async function showDetail(slug) {
+  setTitle('Ladataan… · BandRock');
+  var skel = el('div', 'skel');
+  skel.appendChild(el('div')); skel.appendChild(el('div')); skel.appendChild(el('div'));
+  app.replaceChildren(skel);
 
-  // Käyttäjän teksti menee aina textContentilla, ei koskaan innerHTML:llä.
-  function el(tag, cls, text) {
-    var e = document.createElement(tag);
-    if (cls) e.className = cls;
-    if (text != null) e.textContent = text;
-    return e;
+  var poster;
+  try {
+    var res = await fetch('data/' + encodeURIComponent(slug) + '.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error('404');
+    poster = await res.json();
+  } catch (e) {
+    setTitle('Sivua ei löytynyt · BandRock');
+    var nf = el('section', 'glass pad');
+    nf.appendChild(el('h1', 'label', 'Sivua ei löytynyt'));
+    nf.appendChild(el('p', 'muted', 'Tarkista osoite, tai palaa etusivulle.'));
+    var back = el('a', 'gig-link', '← Etusivulle');
+    back.href = pathFor('');
+    back.addEventListener('click', function (e) { e.preventDefault(); navigate(''); });
+    nf.appendChild(back);
+    app.replaceChildren(nf);
+    focusMain();
+    return;
   }
 
-  function fmtDate(iso) {
-    var p = iso.split('-');
-    var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
-    return WEEKDAYS[d.getUTCDay()] + ' ' + (+p[2]) + '.' + (+p[1]) + '.' + p[0];
-  }
+  currentPoster = poster;
+  setTitle(poster.title + ' · BandRock');
 
-  function playerFor(src) {
-    try {
-      var u = new URL(src);
-      return u.protocol === 'https:' && PLAYERS.hasOwnProperty(u.hostname) ? PLAYERS[u.hostname] : null;
-    } catch (e) {
-      return null;
+  var navLinks = document.getElementById('nav-band-links');
+  navLinks.replaceChildren();
+  [['keikat', 'Keikat'], ['kuuntele', 'Kuuntele'], ['booking', 'Booking']].forEach(function (pair) {
+    if (poster[pair[0] === 'keikat' ? 'gigs' : pair[0] === 'kuuntele' ? 'listen' : 'contact']) {
+      var a = el('a', 'link', pair[1]);
+      a.href = '#' + pair[0];
+      navLinks.appendChild(a);
     }
+  });
+
+  var wrap = el('div');
+  var back = el('a', 'gig-link', '← Kaikki bändit');
+  back.href = pathFor('');
+  back.addEventListener('click', function (e) { e.preventDefault(); navigate(''); });
+  wrap.appendChild(back);
+
+  wrap.appendChild(renderDetail(poster));
+
+  // "+ Lisää keikka" ja muokkausnappi liitetään Keikat-osion otsikkoriviin.
+  var gigsHead = wrap.querySelector('#keikat .head');
+  if (gigsHead) {
+    var addGigBtn = el('button', 'btn small', '+ Lisää keikka');
+    addGigBtn.type = 'button';
+    addGigBtn.addEventListener('click', openGigDialog);
+    gigsHead.appendChild(addGigBtn);
+  }
+  if (poster.editCode) {
+    var editWrap = el('div', 'next-cta');
+    var editBtn = el('button', 'btn ghost', 'Muokkaa tätä sivua koodilla');
+    editBtn.type = 'button';
+    editBtn.addEventListener('click', openEditCodeDialog);
+    editWrap.appendChild(editBtn);
+    wrap.appendChild(editWrap);
   }
 
-  function openPlayer(li, btn, src, info) {
-    var box = el('div', 'gig-player');
-    if (info.ratio) box.style.aspectRatio = '16 / 9';
-    else box.style.height = info.height + 'px';
-    var f = document.createElement('iframe');
-    f.src = src;
-    f.title = info.label;
-    f.allow = info.allow;
-    f.referrerPolicy = 'strict-origin-when-cross-origin';
-    f.setAttribute('allowfullscreen', '');
-    box.appendChild(f);
-    li.appendChild(box);
-    btn.remove();
+  app.replaceChildren(wrap);
+
+  if (location.hash) {
+    requestAnimationFrame(function () {
+      var t = document.querySelector(location.hash);
+      if (t) { t.scrollIntoView(); t.setAttribute('tabindex', '-1'); t.focus(); }
+    });
+  } else {
+    focusMain();
   }
+}
 
-  function renderGig(g) {
-    var li = el('li', 'gig');
+// ── Reititys ─────────────────────────────────────────────────────────────
+function route() {
+  var r = parseRoute();
+  if (r.slug) showDetail(r.slug); else showGrid();
+}
+function navigate(slug) {
+  history.pushState(null, '', pathFor(slug));
+  route();
+}
+window.addEventListener('popstate', route);
+document.getElementById('brand-link').addEventListener('click', function (e) { e.preventDefault(); navigate(''); });
 
-    var when = el('div', 'gig-when');
-    when.appendChild(el('span', 'gig-date', fmtDate(g.date)));
-    if (g.time) when.appendChild(el('span', 'gig-time', 'klo ' + g.time));
-    li.appendChild(when);
-
-    var what = el('div', 'gig-what');
-    what.appendChild(el('div', 'gig-artist', g.artist));
-    what.appendChild(el('div', 'gig-place', g.venue + ' · ' + g.city));
-    if (g.note) what.appendChild(el('div', 'gig-note', g.note));
-    li.appendChild(what);
-
-    if (g.url && /^https:\/\//.test(g.url)) {
-      var a = el('a', 'gig-link', 'Info');
-      a.href = g.url;
-      a.target = '_blank';
-      a.rel = 'nofollow ugc noopener noreferrer';
-      li.appendChild(a);
+// ── "Mikä on BandRock?" ──────────────────────────────────────────────────
+var infoDialog = document.getElementById('info-dialog');
+document.getElementById('info-open').addEventListener('click', async function () {
+  var preview = document.getElementById('info-preview');
+  preview.replaceChildren(el('p', 'muted', 'Ladataan…'));
+  try {
+    var items = await loadIndex();
+    var ray = items.find(function (p) { return p.id === 'ray-jone'; });
+    if (ray) {
+      var card = renderCard(ray);
+      card.addEventListener('click', function () { infoDialog.close(); navigate('ray-jone'); });
+      preview.replaceChildren(card);
     } else {
-      li.appendChild(el('span'));
+      preview.replaceChildren(el('p', 'muted', 'Esimerkkiä ei löytynyt.'));
     }
+  } catch (e) { preview.replaceChildren(el('p', 'muted', 'Esimerkkiä ei saatu ladattua.')); }
+  infoDialog.showModal();
+});
+document.getElementById('info-x').addEventListener('click', function () { infoDialog.close(); });
+document.getElementById('info-close').addEventListener('click', function () { infoDialog.close(); });
+infoDialog.addEventListener('click', function (e) { if (e.target === infoDialog) infoDialog.close(); });
 
-    var info = g.embed ? playerFor(g.embed) : null;
-    if (info) {
-      // Soitin ladataan vasta napista: ei kolmannen osapuolen pyyntöjä ennen sitä.
-      var btn = el('button', 'play', '▶ Kuuntele (' + info.label + ')');
-      btn.type = 'button';
-      btn.addEventListener('click', function () { openPlayer(li, btn, g.embed, info); });
-      var slot = el('div', 'gig-play');
-      slot.appendChild(btn);
-      li.appendChild(slot);
-    }
-    return li;
+// ── Luo uusi bändi (ei vielä käytössä — odottaa Workeria) ────────────────
+var createDialog = document.getElementById('create-dialog');
+var createForm = document.getElementById('create-form');
+function openCreateDialog() {
+  createForm.reset();
+  document.getElementById('create-status').textContent = '';
+  document.getElementById('create-status').className = 'form-status';
+  createDialog.showModal();
+}
+document.getElementById('create-x').addEventListener('click', function () { createDialog.close(); });
+document.getElementById('create-cancel').addEventListener('click', function () { createDialog.close(); });
+createDialog.addEventListener('click', function (e) { if (e.target === createDialog) createDialog.close(); });
+createForm.addEventListener('submit', function (e) {
+  e.preventDefault();
+  var status = document.getElementById('create-status');
+  status.textContent = 'Uuden bändin luonti ei ole vielä käytössä — tulossa pian.';
+  status.className = 'form-status err';
+});
+
+// ── Muokkaa koodilla ──────────────────────────────────────────────────────
+var editCodeDialog = document.getElementById('edit-code-dialog');
+var editCodeForm = document.getElementById('edit-code-form');
+var editFormDialog = document.getElementById('edit-form-dialog');
+var editForm = document.getElementById('edit-form');
+
+function openEditCodeDialog() {
+  editCodeForm.reset();
+  document.getElementById('edit-code-status').textContent = '';
+  document.querySelector('#edit-code-dialog .field').classList.remove('bad');
+  editCodeDialog.showModal();
+}
+document.getElementById('edit-code-x').addEventListener('click', function () { editCodeDialog.close(); });
+document.getElementById('edit-code-cancel').addEventListener('click', function () { editCodeDialog.close(); });
+editCodeDialog.addEventListener('click', function (e) { if (e.target === editCodeDialog) editCodeDialog.close(); });
+
+editCodeForm.addEventListener('submit', function (e) {
+  e.preventDefault();
+  var code = editCodeForm.elements.code.value.trim();
+  var field = document.querySelector('#edit-code-dialog .field');
+  // Huom: tämä on paikallinen, silmämääräinen tarkistus ilman Workeria (vaihe 1).
+  // Oikea tarkistus (HMAC-vertailu palvelimella) tulee vaiheessa 2 — koodi ei silloinkaan
+  // koskaan kulje tässä muodossa julkisesti, vain sen tiiviste tallennetaan.
+  if (currentPoster && currentPoster.editCode && code === currentPoster.editCode) {
+    field.classList.remove('bad');
+    editCodeDialog.close();
+    openEditForm();
+  } else {
+    field.classList.add('bad');
+    field.querySelector('.msg').textContent = 'Väärä koodi.';
+    document.getElementById('edit-code-status').textContent = '';
   }
+});
 
-  function renderGigs(gigs) {
-    listEl.replaceChildren.apply(listEl, gigs.map(renderGig));
-    statusEl.textContent = '';
-  }
+function openEditForm() {
+  document.getElementById('edit-form-name').textContent = currentPoster.title;
+  editForm.elements.city.value = currentPoster.city || '';
+  editForm.elements.title.value = currentPoster.title || '';
+  editForm.elements.tagline.value = currentPoster.tagline || '';
+  editForm.elements.tags.value = (currentPoster.tags || []).join(', ');
+  document.getElementById('edit-form-status').textContent = '';
+  document.getElementById('edit-form-status').className = 'form-status';
+  editFormDialog.showModal();
+}
+document.getElementById('edit-form-x').addEventListener('click', function () { editFormDialog.close(); });
+document.getElementById('edit-form-cancel').addEventListener('click', function () { editFormDialog.close(); });
+editFormDialog.addEventListener('click', function (e) { if (e.target === editFormDialog) editFormDialog.close(); });
+editForm.addEventListener('submit', function (e) {
+  e.preventDefault();
+  var status = document.getElementById('edit-form-status');
+  status.textContent = 'Tallennus ei ole vielä käytössä — tulossa pian.';
+  status.className = 'form-status err';
+});
 
-  function loadGigs() {
-    if (!CONFIGURED) return Promise.resolve();
-    skel.hidden = false;
-    return fetch(API_URL, { cache: 'no-store' })
-      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then(function (d) { renderGigs(d.gigs || []); })
-      .catch(function () { statusEl.textContent = 'Keikkalistaa ei saatu ladattua juuri nyt. Päivitä sivu hetken päästä.'; })
-      .then(function () { skel.hidden = true; });
-  }
+// ── Lisää keikka bändin sivulle (ei vielä käytössä — odottaa Workeria) ───
+var gigDialog = document.getElementById('gig-dialog');
+var gigForm = document.getElementById('gig-form');
+function openGigDialog() {
+  gigForm.reset();
+  gigForm.elements.date.min = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  document.getElementById('gig-form-status').textContent = '';
+  document.getElementById('gig-form-status').className = 'form-status';
+  gigDialog.showModal();
+}
+document.getElementById('gig-x').addEventListener('click', function () { gigDialog.close(); });
+document.getElementById('gig-cancel').addEventListener('click', function () { gigDialog.close(); });
+gigDialog.addEventListener('click', function (e) { if (e.target === gigDialog) gigDialog.close(); });
+gigForm.addEventListener('submit', function (e) {
+  e.preventDefault();
+  var status = document.getElementById('gig-form-status');
+  status.textContent = 'Keikan lisäys ei ole vielä käytössä — tulossa pian.';
+  status.className = 'form-status err';
+});
 
-  function setFormStatus(msg, isError) {
-    formStatus.textContent = msg;
-    formStatus.className = 'form-status' + (isError ? ' err' : '');
-  }
-
-  function fieldOf(name) { return form.querySelector('.field[data-for="' + name + '"]'); }
-
-  function markField(name, msg) {
-    var f = fieldOf(name);
-    if (!f) return;
-    f.classList.toggle('bad', !!msg);
-    if (msg) f.querySelector('.msg').textContent = msg;
-  }
-
-  function clearMarks() {
-    form.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
-  }
-
-  // Tarkistus vasta kun kenttä menettää fokuksen — ei kesken kirjoittamisen.
-  form.querySelectorAll('input').forEach(function (input) {
-    input.addEventListener('blur', function () {
-      var v = input.value.trim();
-      if (!v) { markField(input.name, input.required ? 'Täytä tämä kenttä.' : ''); return; }
-      if (input.type === 'url' && !/^https:\/\/\S+$/i.test(v)) { markField(input.name, 'Linkin pitää alkaa https://'); return; }
-      markField(input.name, '');
-    });
-    input.addEventListener('input', function () {
-      if (fieldOf(input.name) && fieldOf(input.name).classList.contains('bad')) markField(input.name, '');
-    });
-  });
-
-  // Päivän valinta alkaa tästä päivästä (mukavuus; palvelin tarkistaa aina).
-  form.elements.date.min = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-
-  function openDialog() {
-    notice.classList.remove('on');
-    setFormStatus('', false);
-    clearMarks();
-    dialog.showModal();
-  }
-  // <dialog> hoitaa itse fokusansan, Esc-sulkemisen ja fokuksen palautuksen.
-  openBtn.addEventListener('click', openDialog);
-  document.getElementById('gig-cancel').addEventListener('click', function () { dialog.close(); });
-  document.getElementById('gig-x').addEventListener('click', function () { dialog.close(); });
-  dialog.addEventListener('click', function (e) { if (e.target === dialog) dialog.close(); });
-
-  // Bändin oma Spotify-soitin: ladataan vasta napista, jotta laatikko pysyy mustana
-  // eikä Spotifyn valkoinen latausnäkymä välähdä sivulla.
-  document.getElementById('spotify-play').addEventListener('click', function () {
-    var box = document.getElementById('spotify-box');
-    var f = document.createElement('iframe');
-    f.src = 'https://open.spotify.com/embed/artist/6MZ5sOhKDci1bYweyqJBj7?theme=0';
-    f.title = 'Spotify: Ray Jone & The Nekalabama Thunderstorm';
-    f.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
-    f.setAttribute('allowfullscreen', '');
-    box.replaceChildren(f);
-  });
-
-  // "Mitä seuraavaksi" -ikkuna. <dialog> hoitaa fokusansan ja Esc-sulkemisen.
-  var nextDialog = document.getElementById('next-dialog');
-  document.getElementById('next-open').addEventListener('click', function () { nextDialog.showModal(); });
-  document.getElementById('next-x').addEventListener('click', function () { nextDialog.close(); });
-  document.getElementById('next-close').addEventListener('click', function () { nextDialog.close(); });
-  nextDialog.addEventListener('click', function (e) { if (e.target === nextDialog) nextDialog.close(); });
-
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    if (!CONFIGURED) { setFormStatus('Lomake ei ole vielä käytössä.', true); return; }
-    var data = {};
-    new FormData(form).forEach(function (v, k) { data[k] = v; });
-    clearMarks();
-    submitBtn.disabled = true;
-    setFormStatus('Lähetetään…', false);
-
-    fetch(API_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) })
-      .then(function (r) {
-        return r.json().catch(function () { return {}; }).then(function (body) { return { status: r.status, body: body }; });
-      })
-      .then(function (res) {
-        if (res.status === 201) {
-          form.reset();
-          setFormStatus('', false);
-          dialog.close();
-          notice.textContent = '✓ Kiitos! Keikka on lisätty.';
-          notice.classList.add('on');
-          return loadGigs();
-        }
-        if (res.status === 400 && res.body.fields) {
-          var names = Object.keys(res.body.fields);
-          names.forEach(function (k) { markField(k, res.body.fields[k]); });
-          setFormStatus('Tarkista merkityt kentät: ' + names.map(function (k) { return FIELD_LABELS[k] || k; }).join(', ') + '.', true);
-          var first = fieldOf(names[0]);
-          if (first) first.querySelector('input').focus();
-        } else if (res.status === 429) {
-          setFormStatus('Liikaa ilmoituksia juuri nyt. Yritä hetken päästä uudelleen.', true);
-        } else {
-          setFormStatus('Lähetys epäonnistui. Yritä hetken päästä uudelleen.', true);
-        }
-      })
-      .catch(function () { setFormStatus('Lähetys epäonnistui. Tarkista verkkoyhteys ja yritä uudelleen.', true); })
-      .then(function () { submitBtn.disabled = false; });
-  });
-
-  loadGigs();
-})();
+route();
 </script>
 </body>
 </html>

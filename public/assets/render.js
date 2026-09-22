@@ -1,0 +1,318 @@
+// Piirtää yhden bändin JSON:sta joko täyden detaljisivun tai kompaktin ruudukkokortin.
+// Käyttäjän teksti menee aina textContentilla, ei koskaan innerHTML:llä.
+'use strict';
+
+export const WEEKDAYS = ['su', 'ma', 'ti', 'ke', 'to', 'pe', 'la'];
+
+// Soittimet: vain nämä osoitteet upotetaan. Palvelin (Worker) rakentaa nämä myöhemmin
+// käyttäjän linkistä — sivu ei koskaan käytä käyttäjän antamaa osoitetta sellaisenaan.
+export const PLAYERS = {
+  'www.youtube-nocookie.com': { label: 'YouTube', ratio: true, allow: 'accelerometer; clipboard-write; encrypted-media; picture-in-picture; web-share' },
+  'open.spotify.com': { label: 'Spotify', height: 152, allow: 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture' },
+  'w.soundcloud.com': { label: 'SoundCloud', height: 166, allow: 'autoplay' }
+};
+
+export function el(tag, cls, text) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+export function fmtDateISO(iso) {
+  var p = iso.split('-');
+  var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+  return WEEKDAYS[d.getUTCDay()] + ' ' + (+p[2]) + '.' + (+p[1]) + '.' + p[0];
+}
+
+function isPastISO(iso, today) {
+  return iso < today;
+}
+
+export function playerFor(src) {
+  try {
+    var u = new URL(src);
+    return u.protocol === 'https:' && PLAYERS.hasOwnProperty(u.hostname) ? PLAYERS[u.hostname] : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export function slugify(text) {
+  return (text || '')
+    .toLowerCase()
+    .normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60) || 'bandi';
+}
+
+function todayISO() {
+  var n = new Date();
+  return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+}
+
+// ── Keikkalista: uusin ylimpänä, vuosiotsikot, mennet himmeinä ─────────────
+export function renderGigList(gigs) {
+  var ol = el('ol', 'gigs');
+  if (!gigs || !gigs.length) return ol;
+  var today = todayISO();
+  var sorted = gigs.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
+  var year = null;
+  sorted.forEach(function (g) {
+    var y = g.date.slice(0, 4);
+    if (y !== year) { year = y; ol.appendChild(el('li', 'gig-year', y)); }
+    var past = isPastISO(g.date, today);
+    var li = el('li', 'gig' + (past ? ' past' : ''));
+
+    var when = el('div', 'gig-when');
+    when.appendChild(el('span', 'gig-date', fmtDateISO(g.date)));
+    if (g.time) when.appendChild(el('span', 'gig-time', 'klo ' + g.time));
+    li.appendChild(when);
+
+    var what = el('div', 'gig-what');
+    what.appendChild(el('div', 'gig-artist', g.venue + (g.city ? ' · ' + g.city : '')));
+    if (g.note) what.appendChild(el('div', 'gig-note', g.note));
+    li.appendChild(what);
+
+    if (g.url && /^https:\/\//.test(g.url)) {
+      var a = el('a', 'gig-link', 'Info');
+      a.href = g.url; a.target = '_blank'; a.rel = 'nofollow ugc noopener noreferrer';
+      li.appendChild(a);
+    } else {
+      li.appendChild(el('span'));
+    }
+
+    var info = g.embed ? playerFor(g.embed) : null;
+    if (info) {
+      var btn = el('button', 'play', '▶ Kuuntele (' + info.label + ')');
+      btn.type = 'button';
+      btn.addEventListener('click', function () {
+        var box = el('div', 'gig-player');
+        if (info.ratio) box.style.aspectRatio = '16 / 9'; else box.style.height = info.height + 'px';
+        var f = document.createElement('iframe');
+        f.src = g.embed; f.title = info.label; f.allow = info.allow;
+        f.referrerPolicy = 'strict-origin-when-cross-origin';
+        f.setAttribute('allowfullscreen', '');
+        box.appendChild(f);
+        li.appendChild(box);
+        btn.remove();
+      });
+      var slot = el('div', 'gig-play');
+      slot.appendChild(btn);
+      li.appendChild(slot);
+    }
+    ol.appendChild(li);
+  });
+  return ol;
+}
+
+// ── Bändin etsivä keikka: ensimmäinen tuleva, listan mukaisessa järjestyksessä ──
+function nextGig(poster) {
+  if (!poster.gigs) return null;
+  var today = todayISO();
+  var future = poster.gigs.filter(function (g) { return g.date >= today; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+  return future[0] || null;
+}
+
+// ── Kompakti kortti ruudukkoon ──────────────────────────────────────────────
+export function renderCard(poster) {
+  var card = el('button', 'card glass pad');
+  card.type = 'button';
+  card.dataset.id = poster.id;
+
+  var top = el('div', 'card-top');
+  top.appendChild(el('span', 'card-type', poster.type || 'ilmoitus'));
+  if (poster.city) top.appendChild(el('span', 'card-city', poster.city));
+  card.appendChild(top);
+
+  card.appendChild(el('div', 'card-title', poster.title));
+  if (poster.tagline) card.appendChild(el('div', 'card-tagline', poster.tagline));
+
+  if (poster.tags && poster.tags.length) {
+    var tags = el('div', 'card-tags');
+    poster.tags.slice(0, 4).forEach(function (t) { tags.appendChild(el('span', null, t)); });
+    card.appendChild(tags);
+  }
+
+  var next = nextGig(poster);
+  if (next) card.appendChild(el('div', 'card-next', '▸ ' + fmtDateISO(next.date) + ' · ' + next.venue));
+
+  return card;
+}
+
+export function renderCreateCard() {
+  var card = el('button', 'card card-new glass pad');
+  card.type = 'button';
+  card.id = 'create-open';
+  card.appendChild(el('div', 'plus', '+'));
+  card.appendChild(el('div', 'card-title', 'Luo uusi bändi'));
+  return card;
+}
+
+// ── Detaljisivu: piirtää vain osiot joissa on sisältöä ──────────────────────
+export function renderDetail(poster) {
+  var frag = document.createDocumentFragment();
+
+  var header = el('header', 'glass hero pad');
+  var h1 = el('h1');
+  if (poster.logo) {
+    var logo = document.createElement('img');
+    logo.className = 'hero-logo';
+    logo.src = poster.logo.src;
+    if (poster.logo.width) logo.width = poster.logo.width;
+    if (poster.logo.height) logo.height = poster.logo.height;
+    logo.alt = poster.title;
+    h1.appendChild(logo);
+  } else {
+    h1.appendChild(el('span', 'hero-name', poster.title));
+  }
+  header.appendChild(h1);
+  if (poster.tagline) header.appendChild(el('p', 'tagline', poster.tagline));
+  header.appendChild(el('div', 'amber-rule'));
+  if (poster.tags && poster.tags.length) {
+    header.appendChild(el('p', 'genres', poster.tags.join(' · ')));
+  }
+  frag.appendChild(header);
+
+  if (poster.photo) {
+    var figure = document.createElement('figure');
+    figure.className = 'glass photo';
+    var img = document.createElement('img');
+    img.src = poster.photo.src;
+    if (poster.photo.width) img.width = poster.photo.width;
+    if (poster.photo.height) img.height = poster.photo.height;
+    img.alt = poster.photo.alt || poster.title;
+    img.loading = 'lazy';
+    figure.appendChild(img);
+    if (poster.photo.credit || (poster.photo.members && poster.photo.members.length)) {
+      var cap = el('figcaption', 'photo-caption');
+      if (poster.photo.credit) cap.appendChild(el('p', 'credit', 'Kuva: ' + poster.photo.credit));
+      if (poster.photo.members && poster.photo.members.length) {
+        var ul = el('ul', 'members');
+        poster.photo.members.forEach(function (m) {
+          var li = document.createElement('li');
+          var b = document.createElement('b'); b.textContent = m.name;
+          li.appendChild(b);
+          li.appendChild(document.createTextNode(' — ' + m.role));
+          ul.appendChild(li);
+        });
+        cap.appendChild(ul);
+      }
+      figure.appendChild(cap);
+    }
+    frag.appendChild(figure);
+  }
+
+  if (poster.bio && poster.bio.length) {
+    var bioSec = el('section', 'glass pad bio');
+    bioSec.setAttribute('aria-labelledby', 'bio-h');
+    bioSec.appendChild(el('h2', 'label', 'Bio')).id = 'bio-h';
+    poster.bio.forEach(function (p) { bioSec.appendChild(el('p', null, p)); });
+    frag.appendChild(bioSec);
+  }
+
+  if (poster.listen) {
+    var L = poster.listen;
+    var listenSec = el('section', 'glass pad listen');
+    listenSec.id = 'kuuntele';
+    listenSec.setAttribute('aria-labelledby', 'listen-h');
+    var head = el('div', 'head');
+    head.appendChild(el('h2', 'label', 'Kuuntele · Listen')).id = 'listen-h';
+    if (L.title) head.appendChild(el('em', null, 'Uusin single'));
+    listenSec.appendChild(head);
+
+    if (L.cover || L.youtube) {
+      var media = el('div', 'media');
+      if (L.cover) {
+        var cover = el('div', 'cover');
+        var ci = document.createElement('img');
+        ci.src = L.cover.src; if (L.cover.width) ci.width = L.cover.width; if (L.cover.height) ci.height = L.cover.height;
+        ci.alt = (L.title || 'Kansikuva') + ' – singlen kansi'; ci.loading = 'lazy';
+        cover.appendChild(ci);
+        var meta = document.createElement('div');
+        if (L.title) meta.appendChild(el('div', 'title', L.title));
+        if (L.kind) meta.appendChild(el('div', 'kind', L.kind));
+        cover.appendChild(meta);
+        media.appendChild(cover);
+      }
+      if (L.youtube) {
+        var video = el('div', 'video');
+        var yf = document.createElement('iframe');
+        yf.src = L.youtube; yf.title = L.youtubeTitle || (L.title + ' – musiikkivideo');
+        yf.allow = 'accelerometer; clipboard-write; encrypted-media; picture-in-picture; web-share';
+        yf.setAttribute('allowfullscreen', ''); yf.referrerPolicy = 'strict-origin-when-cross-origin'; yf.loading = 'lazy';
+        video.appendChild(yf);
+        media.appendChild(video);
+      }
+      listenSec.appendChild(media);
+    }
+
+    if (L.spotifyArtist) {
+      var sbox = el('div', 'spotify');
+      sbox.id = 'spotify-box';
+      var sbtn = el('button', 'play', '▶ Kuuntele Spotifyssa');
+      sbtn.type = 'button';
+      sbtn.id = 'spotify-play';
+      sbtn.addEventListener('click', function () {
+        var f = document.createElement('iframe');
+        f.src = 'https://open.spotify.com/embed/artist/' + L.spotifyArtist + '?theme=0';
+        f.title = 'Spotify: ' + poster.title;
+        f.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
+        f.setAttribute('allowfullscreen', '');
+        sbox.replaceChildren(f);
+      });
+      sbox.appendChild(sbtn);
+      listenSec.appendChild(sbox);
+    }
+    frag.appendChild(listenSec);
+  }
+
+  if (poster.gigs && poster.gigs.length) {
+    var gigsSec = el('section', 'glass pad');
+    gigsSec.id = 'keikat';
+    gigsSec.setAttribute('aria-labelledby', 'gigs-h');
+    var ghead = el('div', 'head');
+    ghead.appendChild(el('h2', 'label', 'Keikat · Gigs')).id = 'gigs-h';
+    gigsSec.appendChild(ghead);
+    gigsSec.appendChild(renderGigList(poster.gigs));
+    frag.appendChild(gigsSec);
+  }
+
+  if (poster.contact) {
+    var C = poster.contact;
+    var bookSec = el('section', 'glass pad');
+    bookSec.id = 'booking';
+    bookSec.setAttribute('aria-labelledby', 'booking-h');
+    bookSec.appendChild(el('h2', 'label', 'Keikkamyynti · Booking')).id = 'booking-h';
+    var booking = el('div', 'booking');
+    if (C.phone) {
+      var pc = el('div', 'col');
+      pc.appendChild(el('div', 't', 'Puhelin'));
+      var pbig = el('div', 'big');
+      var pa = document.createElement('a'); pa.href = 'tel:' + C.phone; pa.textContent = C.phoneDisplay || C.phone;
+      pbig.appendChild(pa); pc.appendChild(pbig);
+      booking.appendChild(pc);
+    }
+    if (C.email) {
+      var ec = el('div', 'col');
+      ec.appendChild(el('div', 't', 'Sähköposti'));
+      var ebig = el('div', 'big small');
+      var ea = document.createElement('a'); ea.href = 'mailto:' + C.email; ea.textContent = C.email;
+      ebig.appendChild(ea); ec.appendChild(ebig);
+      booking.appendChild(ec);
+    }
+    if (C.social && C.social.length) {
+      var soc = el('div', 'social');
+      C.social.forEach(function (s) {
+        var a = document.createElement('a'); a.href = s.url; a.target = '_blank'; a.rel = 'noreferrer'; a.textContent = s.label;
+        soc.appendChild(a);
+      });
+      booking.appendChild(soc);
+    }
+    bookSec.appendChild(booking);
+    frag.appendChild(bookSec);
+  }
+
+  return frag;
+}
