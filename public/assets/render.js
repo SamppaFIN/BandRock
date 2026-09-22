@@ -38,6 +38,27 @@ export function playerFor(src) {
   }
 }
 
+// Ei-video-soitin (Spotify, SoundCloud) joka paljastuu itsestään ilman klikkausta.
+// Laatikko pysyy mustana kunnes upotus on ehtinyt piirtyä (tai 5 s kuluttua joka
+// tapauksessa), koska Spotifyn oma kehys näyttää hetken valkoista ennen latautumista
+// eikä sen sisälle näe CSS:llä (eri sivusto). Ei täydellinen ratkaisu, mutta paras
+// mahdollinen ilman että käyttäjän pitää itse klikata.
+function buildAutoPlayer(info, src, title) {
+  var box = el('div', 'spotify cloak');
+  var f = document.createElement('iframe');
+  f.src = src;
+  f.title = title || info.label;
+  f.allow = info.allow;
+  f.referrerPolicy = 'strict-origin-when-cross-origin';
+  f.setAttribute('allowfullscreen', '');
+  box.appendChild(f);
+  var done = false;
+  var reveal = function () { if (!done) { done = true; box.classList.remove('cloak'); } };
+  f.addEventListener('load', function () { setTimeout(reveal, 500); });
+  setTimeout(reveal, 5000);
+  return box;
+}
+
 export function slugify(text) {
   return (text || '')
     .toLowerCase()
@@ -235,83 +256,52 @@ export function renderDetail(poster) {
     frag.appendChild(bioSec);
   }
 
-  if (poster.listen) {
-    var L = poster.listen;
+  // Yksi tai useampi julkaisu. Lomakkeella lisätty yksittäinen poster.embed
+  // käyttäytyy samoin kuin yhden julkaisun discografia.
+  var disco = (poster.discography && poster.discography.length) ? poster.discography
+    : (poster.embed ? [{ embed: poster.embed }] : []);
+
+  if (disco.length) {
     var listenSec = el('section', 'glass pad listen');
     listenSec.id = 'kuuntele';
     listenSec.setAttribute('aria-labelledby', 'listen-h');
     var head = el('div', 'head');
     head.appendChild(el('h2', 'label', 'Kuuntele · Listen')).id = 'listen-h';
-    if (L.title) head.appendChild(el('em', null, 'Uusin single'));
+    head.appendChild(el('em', null, 'Discografia'));
     listenSec.appendChild(head);
 
-    if (L.cover || L.youtube) {
-      var media = el('div', 'media');
-      if (L.cover) {
-        var cover = el('div', 'cover');
-        var ci = document.createElement('img');
-        ci.src = L.cover.src; if (L.cover.width) ci.width = L.cover.width; if (L.cover.height) ci.height = L.cover.height;
-        ci.alt = (L.title || 'Kansikuva') + ' – singlen kansi'; ci.loading = 'lazy';
-        cover.appendChild(ci);
-        var meta = document.createElement('div');
-        if (L.title) meta.appendChild(el('div', 'title', L.title));
-        if (L.kind) meta.appendChild(el('div', 'kind', L.kind));
-        cover.appendChild(meta);
-        media.appendChild(cover);
-      }
-      if (L.youtube) {
+    disco.forEach(function (item) {
+      var info = playerFor(item.embed);
+      if (!info) return;
+      if (info.ratio) {
+        // Video: aina heti näkyvissä, valinnainen kansikuva vierekkäin.
+        var media = el('div', 'media');
+        if (item.cover) {
+          var cover = el('div', 'cover');
+          var ci = document.createElement('img');
+          ci.src = item.cover.src; if (item.cover.width) ci.width = item.cover.width; if (item.cover.height) ci.height = item.cover.height;
+          ci.alt = item.title || 'Kansikuva'; ci.loading = 'lazy';
+          cover.appendChild(ci);
+          var meta = document.createElement('div');
+          if (item.title) meta.appendChild(el('div', 'title', item.title));
+          if (item.kind) meta.appendChild(el('div', 'kind', item.kind));
+          cover.appendChild(meta);
+          media.appendChild(cover);
+        }
         var video = el('div', 'video');
         var yf = document.createElement('iframe');
-        yf.src = L.youtube; yf.title = L.youtubeTitle || (L.title + ' – musiikkivideo');
-        yf.allow = 'accelerometer; clipboard-write; encrypted-media; picture-in-picture; web-share';
-        yf.setAttribute('allowfullscreen', ''); yf.referrerPolicy = 'strict-origin-when-cross-origin'; yf.loading = 'lazy';
+        yf.src = item.embed; yf.title = item.title || info.label;
+        yf.allow = info.allow; yf.setAttribute('allowfullscreen', '');
+        yf.referrerPolicy = 'strict-origin-when-cross-origin'; yf.loading = 'lazy';
         video.appendChild(yf);
         media.appendChild(video);
+        listenSec.appendChild(media);
+      } else {
+        // Spotify/SoundCloud: paljastuu itsestään, ei vaadi klikkausta.
+        listenSec.appendChild(buildAutoPlayer(info, item.embed, item.title || poster.title));
       }
-      listenSec.appendChild(media);
-    }
-
-    if (L.spotifyArtist) {
-      var sbox = el('div', 'spotify');
-      sbox.id = 'spotify-box';
-      var sbtn = el('button', 'play', '▶ Kuuntele Spotifyssa');
-      sbtn.type = 'button';
-      sbtn.id = 'spotify-play';
-      sbtn.addEventListener('click', function () {
-        var f = document.createElement('iframe');
-        f.src = 'https://open.spotify.com/embed/artist/' + L.spotifyArtist + '?theme=0';
-        f.title = 'Spotify: ' + poster.title;
-        f.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
-        f.setAttribute('allowfullscreen', '');
-        sbox.replaceChildren(f);
-      });
-      sbox.appendChild(sbtn);
-      listenSec.appendChild(sbox);
-    }
+    });
     frag.appendChild(listenSec);
-  } else if (poster.embed) {
-    // Yksinkertainen lomakkeella lisätty linkki (ei kuratoitua kansikuvaa/videota):
-    // sama klikkaa-avautuu-soitin-malli kuin keikkariveillä.
-    var info = playerFor(poster.embed);
-    if (info) {
-      var simpleListen = el('section', 'glass pad listen');
-      simpleListen.id = 'kuuntele';
-      simpleListen.setAttribute('aria-labelledby', 'listen-h');
-      simpleListen.appendChild(el('h2', 'label', 'Kuuntele · Listen')).id = 'listen-h';
-      var box = el('div', info.ratio ? 'video' : 'spotify');
-      var pbtn = el('button', 'play', '▶ Kuuntele (' + info.label + ')');
-      pbtn.type = 'button';
-      pbtn.addEventListener('click', function () {
-        var f = document.createElement('iframe');
-        f.src = poster.embed; f.title = info.label; f.allow = info.allow;
-        f.referrerPolicy = 'strict-origin-when-cross-origin';
-        f.setAttribute('allowfullscreen', '');
-        box.replaceChildren(f);
-      });
-      box.appendChild(pbtn);
-      simpleListen.appendChild(box);
-      frag.appendChild(simpleListen);
-    }
   }
 
   if (poster.gigs && poster.gigs.length) {

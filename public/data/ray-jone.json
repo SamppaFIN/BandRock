@@ -25,14 +25,20 @@
       { "name": "Tommi Lukinmaa", "role": "Upright Bass" }
     ]
   },
-  "listen": {
-    "cover": { "src": "img/madrid.jpg", "width": 700, "height": 700 },
-    "title": "Madrid",
-    "kind": "Single",
-    "youtube": "https://www.youtube-nocookie.com/embed/GKlZrIftTZ8",
-    "youtubeTitle": "Madrid – musiikkivideo",
-    "spotifyArtist": "6MZ5sOhKDci1bYweyqJBj7"
-  },
+  "discography": [
+    {
+      "type": "youtube",
+      "embed": "https://www.youtube-nocookie.com/embed/GKlZrIftTZ8",
+      "title": "Madrid",
+      "kind": "Single",
+      "cover": { "src": "img/madrid.jpg", "width": 700, "height": 700 }
+    },
+    {
+      "type": "spotify",
+      "embed": "https://open.spotify.com/embed/artist/6MZ5sOhKDci1bYweyqJBj7?theme=0",
+      "title": "Ray Jone & The Nekalabama Thunderstorm — Spotify"
+    }
+  ],
   "gigs": [
     { "date": "2027-07-03", "venue": "Kullaa Rock n Roll Rumble" },
     { "date": "2026-10-17", "venue": "Pub Armo", "note": "RJNT Duo", "url": "https://www.facebook.com/p/Armo-61551476098175/" },

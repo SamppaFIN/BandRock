@@ -363,7 +363,7 @@ async function showDetail(slug) {
   var navLinks = document.getElementById('nav-band-links');
   navLinks.replaceChildren();
   [['keikat', 'Keikat'], ['kuuntele', 'Kuuntele'], ['booking', 'Booking']].forEach(function (pair) {
-    var has = pair[0] === 'keikat' ? poster.gigs : pair[0] === 'kuuntele' ? (poster.listen || poster.embed) : poster.contact;
+    var has = pair[0] === 'keikat' ? poster.gigs : pair[0] === 'kuuntele' ? ((poster.discography && poster.discography.length) || poster.embed) : poster.contact;
     if (has) {
       var a = el('a', 'link', pair[1]);
       a.href = '#' + pair[0];
