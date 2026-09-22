@@ -97,6 +97,9 @@
       <label class="field full" data-for="email"><span class="t">Yhteystieto (näkyy julkisesti)</span><input type="email" name="email" maxlength="120" autocomplete="off"></label>
       <label class="field full" data-for="media"><span class="t">Musiikki tai video</span><textarea name="media" placeholder="https://open.spotify.com/artist/…&#10;https://youtu.be/…"></textarea><span class="err">⚠ <span class="msg"></span></span>
         <span class="hint">Yksi linkki per rivi (YouTube, Spotify tai SoundCloud), enintään 6.</span></label>
+      <label class="field full" data-for="photo"><span class="t">Kuva</span><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><span class="err">⚠ <span class="msg"></span></span>
+        <span class="hint">Pienennetään ja sijaintitiedot poistetaan selaimessa ennen lähetystä.</span>
+        <img class="photo-preview" hidden alt=""></label>
       <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
       <div class="actions">
         <button class="btn" type="submit" id="create-submit">Luo sivu</button>
@@ -163,6 +166,9 @@
       <label class="field full" data-for="email"><span class="t">Yhteystieto (näkyy julkisesti)</span><input type="email" name="email" maxlength="120" autocomplete="off"></label>
       <label class="field full" data-for="media"><span class="t">Musiikki tai video</span><textarea name="media" placeholder="https://open.spotify.com/artist/…&#10;https://youtu.be/…"></textarea><span class="err">⚠ <span class="msg"></span></span>
         <span class="hint">Yksi linkki per rivi (YouTube, Spotify tai SoundCloud), enintään 6.</span></label>
+      <label class="field full" data-for="photo"><span class="t">Kuva</span><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><span class="err">⚠ <span class="msg"></span></span>
+        <span class="hint">Jätä tyhjäksi jos et halua vaihtaa nykyistä kuvaa. Pienennetään ja sijaintitiedot poistetaan selaimessa.</span>
+        <img class="photo-preview" hidden alt=""></label>
       <div class="actions">
         <button class="btn" type="submit">Tallenna</button>
         <button class="btn ghost" type="button" id="edit-form-cancel">Peruuta</button>
@@ -449,7 +455,74 @@ infoDialog.addEventListener('click', function (e) { if (e.target === infoDialog)
 var createDialog = document.getElementById('create-dialog');
 var createForm = document.getElementById('create-form');
 var codeDialog = document.getElementById('code-dialog');
-var FIELD_LABELS = { title: 'Nimi', city: 'Kaupunki', tagline: 'Kuvaus', tags: 'Tyylilajit', email: 'Yhteystieto', media: 'Linkki', type: 'Tyyppi' };
+var FIELD_LABELS = { title: 'Nimi', city: 'Kaupunki', tagline: 'Kuvaus', tags: 'Tyylilajit', email: 'Yhteystieto', media: 'Linkki', type: 'Tyyppi', photo: 'Kuva' };
+
+// ── Kuva: pienennys ja uudelleenkoodaus selaimessa ennen lähetystä ─────────
+// Canvasin kautta piirretty kuva ei koskaan kanna alkuperäisen tiedoston
+// metatietoja (EXIF, mukaan lukien GPS-sijainti) — tämä poistaa ne aina,
+// ei vain joskus.
+var MAX_PHOTO_DIM = 1600;
+var MAX_PHOTO_SOURCE_BYTES = 15 * 1024 * 1024;
+
+function resizeImageFile(file, maxDim) {
+  return new Promise(function (resolve, reject) {
+    if (!file) { resolve(null); return; }
+    if (file.size > MAX_PHOTO_SOURCE_BYTES) { reject(new Error('Kuva on liian suuri (enintään 15 Mt).')); return; }
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function () {
+      URL.revokeObjectURL(url);
+      var w = img.naturalWidth, h = img.naturalHeight;
+      if (!w || !h) { reject(new Error('Kuvaa ei voitu lukea.')); return; }
+      if (w > maxDim || h > maxDim) {
+        if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; } else { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function (blob) {
+        if (!blob) { reject(new Error('Kuvan käsittely epäonnistui.')); return; }
+        resolve({ blob: blob, width: w, height: h });
+      }, 'image/jpeg', 0.85);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Kuvaa ei voitu lukea. Onko tiedosto oikeasti kuva?')); };
+    img.src = url;
+  });
+}
+
+function uploadPhoto(id, code, resized) {
+  var fd = new FormData();
+  fd.append('code', code);
+  fd.append('photo', resized.blob, 'photo.jpg');
+  fd.append('width', String(resized.width));
+  fd.append('height', String(resized.height));
+  return fetch(API_URL + '/posters/' + encodeURIComponent(id) + '/photo', { method: 'POST', body: fd })
+    .then(function (r) { return r.json().catch(function () { return {}; }).then(function (body) { return { status: r.status, body: body }; }); });
+}
+
+// Esikatselu heti tiedoston valinnan jälkeen — sama pienennysfunktio jota lähetyskin käyttää,
+// joten esikatselu näyttää täsmälleen sen mitä lähetetään.
+function wirePhotoPreview(form) {
+  var input = form.elements.photo;
+  var preview = form.querySelector('.photo-preview');
+  input.addEventListener('change', function () {
+    var field = form.querySelector('.field[data-for="photo"]');
+    field.classList.remove('bad');
+    var file = input.files[0];
+    if (!file) { preview.hidden = true; return; }
+    resizeImageFile(file, MAX_PHOTO_DIM).then(function (resized) {
+      preview.src = URL.createObjectURL(resized.blob);
+      preview.hidden = false;
+    }).catch(function (err) {
+      field.classList.add('bad');
+      field.querySelector('.msg').textContent = err.message;
+      input.value = '';
+      preview.hidden = true;
+    });
+  });
+}
+wirePhotoPreview(createForm);
+wirePhotoPreview(document.getElementById('edit-form'));
 
 function openCreateDialog() {
   createForm.reset();
@@ -479,7 +552,7 @@ document.getElementById('code-done').addEventListener('click', function () {
   navigate(id.replace(SITE_BASE, ''));
 });
 
-createForm.addEventListener('submit', function (e) {
+createForm.addEventListener('submit', async function (e) {
   e.preventDefault();
   var status = document.getElementById('create-status');
   createForm.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
@@ -490,18 +563,39 @@ createForm.addEventListener('submit', function (e) {
     return;
   }
 
+  var photoFile = createForm.elements.photo.files[0] || null;
+  var resizedPhoto = null;
+  if (photoFile) {
+    status.textContent = 'Käsitellään kuvaa…';
+    status.className = 'form-status';
+    try {
+      resizedPhoto = await resizeImageFile(photoFile, MAX_PHOTO_DIM);
+    } catch (err) {
+      var pf = createForm.querySelector('.field[data-for="photo"]');
+      pf.classList.add('bad');
+      pf.querySelector('.msg').textContent = err.message;
+      status.textContent = '';
+      return;
+    }
+  }
+
   var data = {};
-  new FormData(createForm).forEach(function (v, k) { data[k] = v; });
+  new FormData(createForm).forEach(function (v, k) { if (k !== 'photo') data[k] = v; });
   status.textContent = 'Luodaan…';
   status.className = 'form-status';
 
   fetch(API_URL + '/posters', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) })
     .then(function (r) { return r.json().catch(function () { return {}; }).then(function (body) { return { status: r.status, body: body }; }); })
-    .then(function (res) {
+    .then(async function (res) {
       if (res.status === 201) {
+        var id = res.body.id, code = res.body.code;
+        if (resizedPhoto) {
+          status.textContent = 'Ladataan kuvaa…';
+          try { await uploadPhoto(id, code, resizedPhoto); } catch (e2) { /* ilmoitus on jo luotu — kuvan voi lisätä myöhemmin muokkauksella */ }
+        }
         createDialog.close();
         loadIndex(true);
-        showCode(res.body.id, res.body.code);
+        showCode(id, code);
       } else if (res.status === 400 && res.body.fields) {
         var names = Object.keys(res.body.fields);
         names.forEach(function (k) {
@@ -575,6 +669,8 @@ function openEditForm() {
   // syötteeksi (esim. youtube-nocookie.com/embed/... ei ole sallittu muoto).
   editForm.elements.media.value = ((currentPoster.discography || [])
     .map(function (d) { return d.url; }).filter(Boolean)).join('\n');
+  editForm.elements.photo.value = '';
+  editForm.querySelector('.photo-preview').hidden = true;
   editForm.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
   document.getElementById('edit-form-status').textContent = '';
   document.getElementById('edit-form-status').className = 'form-status';
@@ -583,7 +679,7 @@ function openEditForm() {
 document.getElementById('edit-form-x').addEventListener('click', function () { editFormDialog.close(); });
 document.getElementById('edit-form-cancel').addEventListener('click', function () { editFormDialog.close(); });
 editFormDialog.addEventListener('click', function (e) { if (e.target === editFormDialog) editFormDialog.close(); });
-editForm.addEventListener('submit', function (e) {
+editForm.addEventListener('submit', async function (e) {
   e.preventDefault();
   var status = document.getElementById('edit-form-status');
 
@@ -594,16 +690,44 @@ editForm.addEventListener('submit', function (e) {
   }
 
   editForm.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
+
+  var photoFile = editForm.elements.photo.files[0] || null;
+  var resizedPhoto = null;
+  if (photoFile) {
+    status.textContent = 'Käsitellään kuvaa…';
+    status.className = 'form-status';
+    try {
+      resizedPhoto = await resizeImageFile(photoFile, MAX_PHOTO_DIM);
+    } catch (err) {
+      var pf = editForm.querySelector('.field[data-for="photo"]');
+      pf.classList.add('bad');
+      pf.querySelector('.msg').textContent = err.message;
+      status.textContent = '';
+      return;
+    }
+  }
+
   var data = {};
-  new FormData(editForm).forEach(function (v, k) { data[k] = v; });
+  new FormData(editForm).forEach(function (v, k) { if (k !== 'photo') data[k] = v; });
   data.code = pendingEditCode;
   status.textContent = 'Tallennetaan…';
   status.className = 'form-status';
 
   fetch(API_URL + '/posters/' + encodeURIComponent(currentPoster.id), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) })
     .then(function (r) { return r.json().catch(function () { return {}; }).then(function (body) { return { status: r.status, body: body }; }); })
-    .then(function (res) {
+    .then(async function (res) {
       if (res.status === 200) {
+        if (resizedPhoto) {
+          status.textContent = 'Ladataan kuvaa…';
+          var photoRes = await uploadPhoto(currentPoster.id, pendingEditCode, resizedPhoto);
+          if (photoRes.status !== 201) {
+            var pf2 = editForm.querySelector('.field[data-for="photo"]');
+            pf2.classList.add('bad');
+            pf2.querySelector('.msg').textContent = 'Muut muutokset tallentuivat, mutta kuvan lataus epäonnistui. Yritä uudelleen.';
+            status.textContent = '';
+            return;
+          }
+        }
         pendingEditCode = '';
         editFormDialog.close();
         showDetail(currentPoster.id);

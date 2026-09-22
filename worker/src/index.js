@@ -7,12 +7,15 @@
  *   PATCH  /api/posters/:id          muokkaus koodilla (vain lomakkeen kentät, muu sisältö säilyy)
  *   DELETE /api/posters/:id          poisto koodilla
  *   POST   /api/posters/:id/gigs     yhden keikan lisäys koodilla
+ *   POST   /api/posters/:id/photo    bändin kuvan lataus koodilla (multipart/form-data)
+ *   GET    /img/<id>/<tiedosto>      ladattu kuva
  *
  * Ilmoittajasta ei tallenneta mitään pysyvästi. IP:tä käytetään vain ohimenevästi
  * nopeusrajoittimen avaimena (Cloudflaren oma rajoitinpalvelu), ei kirjoiteta R2:een.
  */
 import { validateCreate, validatePatch, validateGigEntry } from './schema.js';
 import { generateCode, hashCode, verifyCode, slugify } from './code.js';
+import { detectImageType, MAX_IMAGE_BYTES } from './image.js';
 
 const MAX_BODY = 8192;
 const LIST_CACHE_SECONDS = 30;
@@ -240,6 +243,79 @@ async function addGig(request, env, id, cors) {
   return json({ ok: true }, 201, cors);
 }
 
+// Poimii R2-avaimen kuvan src-kentästä. src on tavallisesti täysi osoite
+// (tämän Workerin tarjoilema), mutta hyväksytään myös suora avain varmuudeksi.
+function photoKeyOf(src) {
+  if (typeof src !== 'string' || !src) return null;
+  try {
+    return new URL(src).pathname.replace(/^\/+/, '');
+  } catch {
+    return src;
+  }
+}
+
+async function uploadPhoto(request, env, id, cors) {
+  let form;
+  try {
+    form = await request.formData();
+  } catch {
+    return json({ error: 'bad_form' }, 400, cors);
+  }
+  const code = String(form.get('code') || '');
+
+  if (await rateLimited(env, `edit:${id}`)) return json({ error: 'busy' }, 429, cors);
+
+  const { poster, error: authError } = await loadForEdit(env, id, code);
+  if (authError) return json(await authError.json(), authError.status, cors);
+
+  const file = form.get('photo');
+  if (!(file instanceof File) || file.size === 0) {
+    return json({ error: 'invalid', fields: { photo: 'Valitse kuva.' } }, 400, cors);
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    return json({ error: 'invalid', fields: { photo: 'Kuva on liian suuri.' } }, 400, cors);
+  }
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const detected = detectImageType(bytes);
+  if (!detected) {
+    return json({ error: 'invalid', fields: { photo: 'Tiedosto ei ole tunnistettu kuva (JPEG, PNG tai WebP).' } }, 400, cors);
+  }
+
+  // Vanha kuva pois, jos korvataan uudella — ei jätetä orpoja tiedostoja R2:een.
+  // photo.src on täysi osoite (esim. https://bandrock.xxx.workers.dev/img/<id>/<ts>.jpg);
+  // R2-avain on sen polku ilman alkukauttaviivaa.
+  const oldKey = photoKeyOf(poster.photo && poster.photo.src);
+  if (oldKey && oldKey.startsWith(`img/${id}/`)) {
+    await env.BUCKET.delete(oldKey).catch(() => {});
+  }
+
+  const width = Math.round(Number(form.get('width'))) || null;
+  const height = Math.round(Number(form.get('height'))) || null;
+  const key = `img/${id}/${Date.now()}.${detected.ext}`;
+  await env.BUCKET.put(key, bytes, { httpMetadata: { contentType: detected.type } });
+
+  // Täysi osoite, ei suhteellinen polku: kuva tarjoillaan tältä Workerilta, ei sivustolta
+  // (toisin kuin esim. Ray Jonen valmis img/band.jpg, joka on osa itse sivuston tiedostoja).
+  const src = `${new URL(request.url).origin}/${key}`;
+  const updated = { ...poster, photo: { src, width, height, alt: poster.title }, updated: Date.now() };
+  await env.BUCKET.put(`posters/${id}.json`, JSON.stringify(updated), { customMetadata: customMetaFor(updated) });
+  await purgeListCache();
+  return json({ ok: true, src: key }, 201, cors);
+}
+
+async function serveImage(env, key, cors) {
+  const obj = await env.BUCKET.get(key);
+  if (!obj) return json({ error: 'not_found' }, 404, cors);
+  return new Response(obj.body, {
+    headers: {
+      'content-type': obj.httpMetadata?.contentType || 'application/octet-stream',
+      'cache-control': 'public, max-age=31536000, immutable', // tiedostonimessä aikaleima, joten sama avain ei koskaan vaihda sisältöä
+      ...cors,
+    },
+  });
+}
+
 export default {
   async fetch(request, env) {
     const cors = corsHeaders(request, env);
@@ -247,7 +323,13 @@ export default {
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
       const url = new URL(request.url);
-      const parts = url.pathname.split('/').filter(Boolean); // ["api","posters", ":id"?, "gigs"?]
+      const parts = url.pathname.split('/').filter(Boolean);
+
+      if (parts[0] === 'img') {
+        if (request.method !== 'GET') return json({ error: 'method_not_allowed' }, 405, cors);
+        return await serveImage(env, parts.join('/'), cors);
+      }
+
       if (parts[0] !== 'api' || parts[1] !== 'posters') return json({ error: 'not_found' }, 404, cors);
 
       if (parts.length === 2) {
@@ -261,6 +343,9 @@ export default {
       } else if (parts.length === 4 && parts[3] === 'gigs') {
         const id = decodeURIComponent(parts[2]);
         if (request.method === 'POST') return await addGig(request, env, id, cors);
+      } else if (parts.length === 4 && parts[3] === 'photo') {
+        const id = decodeURIComponent(parts[2]);
+        if (request.method === 'POST') return await uploadPhoto(request, env, id, cors);
       }
       return json({ error: 'method_not_allowed' }, 405, cors);
     } catch (err) {
