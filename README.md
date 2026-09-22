@@ -29,11 +29,16 @@ Komento tulostaa Workerin osoitteen, esim. `https://bandrock.TILISI.workers.dev`
 var API_URL = 'https://bandrock.TILISI.workers.dev/api';
 ```
 
-**Siemennä Ray Jonen sivu tuotanto-R2:een** (koodi 00000, sama kuin paikallisessa kehityksessä):
+**Siemennä Ray Jonen sivu tuotanto-R2:een** (koodi 00000, sama kuin paikallisessa kehityksessä). Käytä samaa arvoa kuin annoit `wrangler secret put CODE_SECRET`:lle — arvo ei koskaan tallennu mihinkään, se on vain ympäristömuuttuja tämän yhden ajon ajan:
 ```
-CODE_SECRET=<sama_arvo_jonka_annoit_yllä> npx wrangler r2 object put bandrock-posters/posters/ray-jone.json --remote --file=<siemendatan_polku>
+# PowerShell:
+$env:CODE_SECRET = "sama arvo kuin secret put"
+node worker/seed-remote.mjs
+
+# Bash:
+CODE_SECRET="sama arvo kuin secret put" node worker/seed-remote.mjs
 ```
-Tarkin komento riippuu siitä, tallennetaanko `codeHash` samalla tavalla kuin `worker/seed-local.mjs` tekee paikallisesti — käytä sitä skriptiä mallina, tai pyydä apua ennen tuotantosiemennystä.
+`wrangler r2 object put` ei tue R2:n `customMetadata`a komentoriviltä, joten tällä tavalla siemennetyltä ilmoitukselta se puuttuu — Worker huomaa tämän ja lukee tarvittavat kentät (tyyppi, kaupunki, tagit) tarvittaessa suoraan tiedostosta ruudukkoa varten (`worker/src/index.js`, `listPosters`). Normaalisti luodut/muokatut ilmoitukset (lomakkeen kautta) saavat `customMetadata`n aina suoraan, tämä koskee vain käsin siemennettyä dataa.
 
 ## 3. Julkaise sivu
 

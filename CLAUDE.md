@@ -92,7 +92,11 @@ Kuka tahansa  → lomake → POST/PATCH/DELETE API_URL/posters[...] → Worker t
 
 **Testattu paikallisesti (ei pilveä):** 28 yksikkötestiä (schema/code/media) + 20 selaintarkistusta koko kierrolle oikeaa Workeria vasten (luonti → koodi näkyy kerran → muokkaus koodilla → väärä koodi hylätään ja ohjaa takaisin koodikyselyyn → keikan lisäys koodilla → poisto koodilla, axe-core puhtaana) + 42 selaintarkistusta Vaiheen 1 staattiselle varakäytökselle (kun `API_URL` ei ole määritetty).
 
-**Puuttuu vielä ennen tuotantoa (Infinite):** repo nimetty uudelleen, `wrangler login`, R2-ämpärin luonti, `CODE_SECRET`+`TURNSTILE_SECRET`-salaisuudet, `wrangler deploy`, `API_URL` päivitys `public/index.html`:ään, Ray Jonen siemennys tuotanto-R2:een (README kohta 2). Turnstile itse (widget + siteverify) ei ole vielä koodissa — vaatii oman Turnstile-sivuston luonnin Cloudflaren dashboardista ensin.
+**Julkaisu käynnissä (22.9.2026, Infinite):** repo nimetty uudelleen ✓, `wrangler login` ✓, R2-ämpäri `bandrock-posters` luotu ✓ (piti hyväksyä R2 ensin Cloudflaren dashboardista — tili ei ollut käyttänyt R2:ta aiemmin), `CODE_SECRET`+`TURNSTILE_SECRET` asetettu ✓, `wrangler deploy` onnistui ✓. `setup-cloudflare.bat` (projektin juuressa, ei committoitu — kysytty Infinitiltä) ajaa nämä kaikki peräkkäin, hyppää aina omaan kansioonsa `%~dp0`:lla. **Jäljellä:** Workerin osoite `API_URL`-vakioon `public/index.html`:ään, Ray Jonen siemennys tuotanto-R2:een `worker/seed-remote.mjs`:llä.
+
+- **`worker/seed-remote.mjs`**: sama kuin `seed-local.mjs` mutta kirjoittaa `wrangler r2 object put --remote`illa. CLI ei tue `customMetadata`a, joten `listPosters()` (`worker/src/index.js`) osaa lukea puuttuvat hakukentät (tyyppi/kaupunki/tagit) tarvittaessa suoraan tiedoston sisällöstä (`env.BUCKET.get`), jos `customMetadata.title` puuttuu. Testattu paikallisesti simuloimalla CLI:n käytöstä (siemennys ilman customMetadataa, sitten `GET /api/posters` palautti silti oikeat kentät).
+- `CODE_SECRET`-arvoa ei koskaan pyydetä eikä liitetä keskusteluun — se annetaan aina ympäristömuuttujana paikallisesti (`$env:CODE_SECRET` / `CODE_SECRET=…`).
+- Turnstile itse (widget + siteverify) ei ole vielä koodissa — vaatii oman Turnstile-sivuston luonnin Cloudflaren dashboardista ensin.
 
 ```
 public/

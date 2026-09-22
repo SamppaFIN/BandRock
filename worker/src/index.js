@@ -62,7 +62,16 @@ async function listPosters(env, cors) {
   do {
     const page = await env.BUCKET.list({ prefix: 'posters/', cursor, include: ['customMetadata'] });
     for (const obj of page.objects) {
-      const m = obj.customMetadata || {};
+      let m = obj.customMetadata || {};
+      // Tavallisesti customMetadata riittää (POST/PATCH-reitit asettavat sen aina).
+      // Jos joku ilmoitus on kirjoitettu R2:een muuta kautta (esim. `wrangler r2 object
+      // put`, joka ei osaa asettaa customMetadataa), luetaan tiedot silloin itse tiedostosta.
+      if (!m.title) {
+        try {
+          const body = await env.BUCKET.get(obj.key);
+          if (body) m = await body.json();
+        } catch { /* jätetään ohi, jos tiedosto ei ole kelvollista JSON:ia */ }
+      }
       if (m.status === 'hidden') continue;
       out.push({
         id: m.id || obj.key.slice('posters/'.length, -'.json'.length),
@@ -70,7 +79,7 @@ async function listPosters(env, cors) {
         title: m.title || '',
         city: m.city || '',
         tagline: m.tagline || '',
-        tags: m.tags ? m.tags.split('|').filter(Boolean) : [],
+        tags: Array.isArray(m.tags) ? m.tags : (typeof m.tags === 'string' ? m.tags.split('|').filter(Boolean) : []),
       });
     }
     cursor = page.truncated ? page.cursor : undefined;
