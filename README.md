@@ -22,6 +22,7 @@ npx wrangler login         # kirjaudu Cloudflareen selaimella
 npx wrangler r2 bucket create bandrock-posters
 npx wrangler secret put CODE_SECRET        # anna mikä tahansa pitkä satunnainen merkkijono
 npx wrangler secret put TURNSTILE_SECRET   # väliaikainen arvo käy (esim. "ei-kaytossa"), Turnstile ei ole vielä kytketty (ks. alla)
+npx wrangler secret put ADMIN_SECRET       # ylläpitosivun (/admin) salasana — anna oma, pitkä arvo, pidä talteen
 npm run deploy:worker
 ```
 Komento tulostaa Workerin osoitteen, esim. `https://bandrock.TILISI.workers.dev`. Liitä se tiedostoon `public/index.html` vakioon `API_URL` loppuun `/api`:
@@ -85,7 +86,15 @@ Avaa sivu paikallisesti osoitteessa `http://localhost:8080/?api=http://localhost
 - Palvelin tarkistaa kaikki kentät (`worker/src/schema.js`). Selaimen tarkistus on vain mukavuutta.
 - Nopeusrajoitin (`ratelimits`-sidonta): 20 luontia/muokkausyritystä 60 sekunnissa, erikseen jokaiselle ilmoitukselle muokkauksissa. Hidastaa väärinkäyttöä, ei täydellinen suoja.
 - Piilokenttä torjuu yksinkertaiset botit.
-- **Ei vielä:** Turnstile-botintorjunta (vaatii oman Turnstile-sivuston Cloudflaren dashboardista — site key sivulle, secret Workeriin), kuvien lataus, ylläpitonäkymä piilotukseen.
+- **Ei vielä:** Turnstile-botintorjunta (vaatii oman Turnstile-sivuston Cloudflaren dashboardista — site key sivulle, secret Workeriin).
+
+## Ylläpito ja piilotus
+
+Jokaisella bändisivulla on "Ilmoita asiaton" -nappi (ei vaadi koodia, kaksoisklikkausvarmistus). Ilmoitukset vain kasvattavat laskuria — mikään ei piiloudu automaattisesti.
+
+Ylläpitosivu on osoitteessa `<Workerin osoite>/admin` (esim. `https://bandrock.TILISI.workers.dev/admin`) — **ei GitHub Pagesilla**, koska Cloudflare Access ei voi suojata Pagesin staattista sisältöä. Kirjaudu `ADMIN_SECRET`-arvolla (yllä, kohta 2). Sivu näyttää kaikki ilmoitukset ilmoitusmäärän mukaan lajiteltuna ja tarjoaa jokaiselle:
+- **Piilota/Näytä** — poistaa/palauttaa ilmoituksen yleisöltä ilman omistajan koodia.
+- **Poista pysyvästi** — poistaa R2:sta kokonaan, varmistetaan kysymyksellä.
 
 ### Vanha keikkalista-Worker (D1) — poistettu
 

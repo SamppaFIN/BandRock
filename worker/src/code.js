@@ -35,6 +35,12 @@ export async function verifyCode(code, storedHash, secret) {
   return timingSafeEqual(hash, storedHash);
 }
 
+/** Ylläpitosalasanan vertailu (env.ADMIN_SECRET). Aikavakioinen, ei riipu pituudesta ulospäin. */
+export function verifyAdmin(given, secret) {
+  if (typeof given !== 'string' || !given || typeof secret !== 'string' || !secret) return false;
+  return timingSafeEqual(given, secret);
+}
+
 /** Nimestä johdettu, luettava, URL-turvallinen tunnus. Sama logiikka kuin public/assets/render.js:ssä. */
 export function slugify(text) {
   return (text || '')

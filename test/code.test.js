@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateCode, hashCode, verifyCode, slugify } from '../worker/src/code.js';
+import { generateCode, hashCode, verifyCode, verifyAdmin, slugify } from '../worker/src/code.js';
 
 test('generateCode: 5 merkkiä, ei sekoitettavia kirjaimia (0/O, 1/I/L)', () => {
   for (let i = 0; i < 200; i++) {
@@ -38,6 +38,17 @@ test('hashCode: sama koodi ja salaisuus antavat aina saman tiivisteen', async ()
   const a = await hashCode('K7M2P', 'x');
   const b = await hashCode('K7M2P', 'x');
   assert.equal(a, b);
+});
+
+test('verifyAdmin: oikea salasana hyväksytään, väärä ei, puuttuva ei koskaan', () => {
+  assert.equal(verifyAdmin('salasana123', 'salasana123'), true);
+  assert.equal(verifyAdmin('vaarin', 'salasana123'), false);
+  assert.equal(verifyAdmin('', 'salasana123'), false);
+  assert.equal(verifyAdmin('salasana123', ''), false);
+  assert.equal(verifyAdmin(undefined, 'salasana123'), false);
+  assert.equal(verifyAdmin('salasana123', undefined), false);
+  // eripituiset merkkijonot eivät koskaan täsmää (ei kaadu pituusvertailuun)
+  assert.equal(verifyAdmin('lyhyt', 'paljon-pidempi-salasana'), false);
 });
 
 test('slugify: nimestä luettava, URL-turvallinen tunnus', () => {

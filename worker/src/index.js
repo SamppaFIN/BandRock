@@ -8,13 +8,18 @@
  *   DELETE /api/posters/:id          poisto koodilla
  *   POST   /api/posters/:id/gigs     yhden keikan lisäys koodilla
  *   POST   /api/posters/:id/photo    bändin kuvan lataus koodilla (multipart/form-data)
+ *   POST   /api/posters/:id/report   "ilmoita asiaton" — anonyymi, ei koodia, nostaa laskuria
  *   GET    /img/<id>/<tiedosto>      ladattu kuva
+ *   GET    /admin                    ylläpitosivu (kysyy ADMIN_SECRETin selaimessa)
+ *   GET    /api/admin/posters        kaikki ilmoitukset piilotetut mukaan lukien (x-admin-key)
+ *   POST   /api/admin/posters/:id/status   piilota/näytä (x-admin-key)
+ *   DELETE /api/admin/posters/:id    poisto ilman omistajan koodia (x-admin-key)
  *
  * Ilmoittajasta ei tallenneta mitään pysyvästi. IP:tä käytetään vain ohimenevästi
  * nopeusrajoittimen avaimena (Cloudflaren oma rajoitinpalvelu), ei kirjoiteta R2:een.
  */
 import { validateCreate, validatePatch, validateGigEntry } from './schema.js';
-import { generateCode, hashCode, verifyCode, slugify } from './code.js';
+import { generateCode, hashCode, verifyCode, verifyAdmin, slugify } from './code.js';
 import { detectImageType, MAX_IMAGE_BYTES } from './image.js';
 
 const MAX_BODY = 8192;
@@ -166,6 +171,7 @@ async function createPoster(request, env, cors) {
     discography: result.value.discography,
     gigs: [],
     status: 'visible',
+    reports: 0,
     created: now,
     updated: now,
     codeHash,
@@ -316,6 +322,151 @@ async function serveImage(env, key, cors) {
   });
 }
 
+// ── "Ilmoita asiaton": anonyymi, ei koodia, vain laskuri ylläpitoa varten ──
+// Ei koskaan piilota automaattisesti — se olisi väärinkäytettävissä (joukolla
+// ilmoittamalla saisi kenen tahansa sivun katoamaan). Ylläpitäjä päättää aina.
+async function reportPoster(env, id, cors) {
+  if (await rateLimited(env, `report:${id}`)) return json({ error: 'busy' }, 429, cors);
+  const obj = await env.BUCKET.get(`posters/${id}.json`);
+  if (!obj) return json({ error: 'not_found' }, 404, cors);
+  const poster = await obj.json();
+  const updated = { ...poster, reports: (poster.reports || 0) + 1, updated: poster.updated };
+  await env.BUCKET.put(`posters/${id}.json`, JSON.stringify(updated), { customMetadata: customMetaFor(updated) });
+  return json({ ok: true }, 200, cors);
+}
+
+// ── Ylläpito: oma salasana (ADMIN_SECRET), ei omistajan koodi ─────────────
+function requireAdmin(request, env) {
+  return verifyAdmin(request.headers.get('x-admin-key') || '', env.ADMIN_SECRET || '');
+}
+
+async function adminListPosters(env, cors) {
+  const out = [];
+  let cursor;
+  do {
+    const page = await env.BUCKET.list({ prefix: 'posters/', cursor });
+    for (const obj of page.objects) {
+      const body = await env.BUCKET.get(obj.key);
+      if (!body) continue;
+      const p = await body.json();
+      out.push({ id: p.id, title: p.title, type: p.type, city: p.city, status: p.status, reports: p.reports || 0, created: p.created });
+    }
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  out.sort((a, b) => (b.reports || 0) - (a.reports || 0) || b.created - a.created);
+  return json({ posters: out }, 200, { ...cors, 'cache-control': 'no-store' });
+}
+
+async function adminSetStatus(request, env, id, cors) {
+  const { value: input, error } = await readBody(request);
+  if (error) return json(await error.json(), error.status, cors);
+  if (input.status !== 'visible' && input.status !== 'hidden') return json({ error: 'invalid' }, 400, cors);
+
+  const obj = await env.BUCKET.get(`posters/${id}.json`);
+  if (!obj) return json({ error: 'not_found' }, 404, cors);
+  const poster = await obj.json();
+  const updated = { ...poster, status: input.status, updated: Date.now() };
+  await env.BUCKET.put(`posters/${id}.json`, JSON.stringify(updated), { customMetadata: customMetaFor(updated) });
+  await purgeListCache();
+  return json({ ok: true }, 200, cors);
+}
+
+async function adminDeletePoster(env, id, cors) {
+  await env.BUCKET.delete(`posters/${id}.json`);
+  await purgeListCache();
+  return json({ ok: true }, 200, cors);
+}
+
+function serveAdminPage(cors) {
+  return new Response(ADMIN_HTML, { headers: { 'content-type': 'text/html; charset=utf-8', ...cors } });
+}
+
+const ADMIN_HTML = `<!DOCTYPE html>
+<html lang="fi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>BandRock — ylläpito</title>
+<style>
+  body { margin:0; background:#0a0806; color:#f3ede2; font-family:Georgia,serif; }
+  .wrap { max-width:900px; margin:0 auto; padding:24px 16px 60px; }
+  h1 { font-size:20px; letter-spacing:.1em; text-transform:uppercase; color:#f5b122; }
+  .row { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+  input { font:inherit; padding:10px 12px; border-radius:8px; border:1px solid #444; background:#1a1712; color:#fff; }
+  button { font:inherit; padding:10px 16px; border-radius:8px; border:1px solid #f5b122; background:#f5b122; color:#1a1204; cursor:pointer; }
+  button.ghost { background:none; color:#f5b122; }
+  button.danger { background:#c44; border-color:#c44; color:#fff; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid #2a2620; vertical-align:top; }
+  .reports { color:#e66; font-weight:bold; }
+  .hidden-row { opacity:.5; }
+  .msg { color:#e66; }
+</style></head>
+<body><div class="wrap">
+  <h1>BandRock — ylläpito</h1>
+  <div class="row">
+    <input type="password" id="key" placeholder="Ylläpitosalasana" style="flex:1">
+    <button id="load">Näytä ilmoitukset</button>
+  </div>
+  <p class="msg" id="msg"></p>
+  <table id="table" hidden>
+    <thead><tr><th>Nimi</th><th>Tyyppi</th><th>Kaupunki</th><th>Ilmoituksia</th><th>Tila</th><th></th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+<script>
+  var key = sessionStorage.getItem('bandrock-admin-key') || '';
+  document.getElementById('key').value = key;
+  function api(path, opts) {
+    opts = opts || {};
+    opts.headers = Object.assign({ 'x-admin-key': document.getElementById('key').value }, opts.headers || {});
+    return fetch(path, opts).then(function (r) { return r.json().then(function (b) { return { status: r.status, body: b }; }); });
+  }
+  function load() {
+    key = document.getElementById('key').value;
+    sessionStorage.setItem('bandrock-admin-key', key);
+    document.getElementById('msg').textContent = 'Ladataan…';
+    api('/api/admin/posters').then(function (res) {
+      if (res.status === 401) { document.getElementById('msg').textContent = 'Väärä salasana.'; document.getElementById('table').hidden = true; return; }
+      document.getElementById('msg').textContent = '';
+      var rows = document.getElementById('rows');
+      rows.innerHTML = '';
+      res.body.posters.forEach(function (p) {
+        var tr = document.createElement('tr');
+        if (p.status === 'hidden') tr.className = 'hidden-row';
+        var tds = [p.title, p.type, p.city, p.reports || 0, p.status];
+        tds.forEach(function (v, i) {
+          var td = document.createElement('td');
+          if (i === 3 && v > 0) td.className = 'reports';
+          td.textContent = v;
+          tr.appendChild(td);
+        });
+        var actionsTd = document.createElement('td');
+        var toggleBtn = document.createElement('button');
+        toggleBtn.className = 'ghost';
+        toggleBtn.textContent = p.status === 'hidden' ? 'Näytä' : 'Piilota';
+        toggleBtn.onclick = function () {
+          api('/api/admin/posters/' + encodeURIComponent(p.id) + '/status', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: p.status === 'hidden' ? 'visible' : 'hidden' }) }).then(load);
+        };
+        var delBtn = document.createElement('button');
+        delBtn.className = 'danger';
+        delBtn.textContent = 'Poista pysyvästi';
+        delBtn.style.marginLeft = '6px';
+        delBtn.onclick = function () {
+          if (!confirm('Poistetaanko "' + p.title + '" pysyvästi? Ei voi perua.')) return;
+          api('/api/admin/posters/' + encodeURIComponent(p.id), { method: 'DELETE' }).then(load);
+        };
+        actionsTd.appendChild(toggleBtn);
+        actionsTd.appendChild(delBtn);
+        tr.appendChild(actionsTd);
+        rows.appendChild(tr);
+      });
+      document.getElementById('table').hidden = false;
+    });
+  }
+  document.getElementById('load').addEventListener('click', load);
+  if (key) load();
+</script>
+</body></html>`;
+
 export default {
   async fetch(request, env) {
     const cors = corsHeaders(request, env);
@@ -328,6 +479,23 @@ export default {
       if (parts[0] === 'img') {
         if (request.method !== 'GET') return json({ error: 'method_not_allowed' }, 405, cors);
         return await serveImage(env, parts.join('/'), cors);
+      }
+
+      if (parts[0] === 'admin' && parts.length === 1) {
+        if (request.method !== 'GET') return json({ error: 'method_not_allowed' }, 405, cors);
+        return serveAdminPage(cors);
+      }
+
+      if (parts[0] === 'api' && parts[1] === 'admin' && parts[2] === 'posters') {
+        if (!requireAdmin(request, env)) return json({ error: 'unauthorized' }, 401, cors);
+        if (parts.length === 3 && request.method === 'GET') return await adminListPosters(env, cors);
+        if (parts.length === 5 && parts[4] === 'status' && request.method === 'POST') {
+          return await adminSetStatus(request, env, decodeURIComponent(parts[3]), cors);
+        }
+        if (parts.length === 4 && request.method === 'DELETE') {
+          return await adminDeletePoster(env, decodeURIComponent(parts[3]), cors);
+        }
+        return json({ error: 'method_not_allowed' }, 405, cors);
       }
 
       if (parts[0] !== 'api' || parts[1] !== 'posters') return json({ error: 'not_found' }, 404, cors);
@@ -346,6 +514,9 @@ export default {
       } else if (parts.length === 4 && parts[3] === 'photo') {
         const id = decodeURIComponent(parts[2]);
         if (request.method === 'POST') return await uploadPhoto(request, env, id, cors);
+      } else if (parts.length === 4 && parts[3] === 'report') {
+        const id = decodeURIComponent(parts[2]);
+        if (request.method === 'POST') return await reportPoster(env, id, cors);
       }
       return json({ error: 'method_not_allowed' }, 405, cors);
     } catch (err) {

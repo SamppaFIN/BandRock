@@ -157,6 +157,7 @@
       <h2 class="label" id="edit-form-title">Muokkaa: <span id="edit-form-name"></span></h2>
       <button class="x" type="button" id="edit-form-x" aria-label="Sulje">✕</button>
     </div>
+    <p class="muted">Lomake on esitäytetty sivun nykyisillä, jo julkisilla tiedoilla. Koodi tarkistetaan vasta kun painat Tallenna.</p>
     <form class="form" id="edit-form" novalidate>
       <label class="field" data-for="city"><span class="t">Kaupunki</span><input type="text" name="city" maxlength="60" autocomplete="off"></label>
       <label class="field full" data-for="title"><span class="t">Nimi *</span><input type="text" name="title" required maxlength="80" autocomplete="off"></label>
@@ -403,6 +404,26 @@ async function showDetail(slug) {
     editBtn.addEventListener('click', openEditCodeDialog);
     editWrap.appendChild(editBtn);
     wrap.appendChild(editWrap);
+
+    // "Ilmoita asiaton": kaksi klikkausta ettei vahingossa lähde, ei koodia (kuka
+    // tahansa saa ilmoittaa). Ei koskaan piilota automaattisesti — vain ylläpitäjä päättää.
+    var reportWrap = el('div', 'next-cta');
+    var reportBtn = el('button', 'btn ghost small', 'Ilmoita asiaton');
+    reportBtn.type = 'button';
+    reportBtn.addEventListener('click', function () {
+      if (reportBtn.dataset.confirming) {
+        reportBtn.disabled = true;
+        reportBtn.textContent = 'Lähetetään…';
+        fetch(API_URL + '/posters/' + encodeURIComponent(poster.id) + '/report', { method: 'POST' })
+          .then(function () { reportBtn.textContent = 'Kiitos, ilmoitus vastaanotettu.'; })
+          .catch(function () { reportBtn.textContent = 'Ilmoitus epäonnistui. Yritä myöhemmin.'; reportBtn.disabled = false; delete reportBtn.dataset.confirming; });
+      } else {
+        reportBtn.dataset.confirming = '1';
+        reportBtn.textContent = 'Varmista: ilmoita asiaton?';
+      }
+    });
+    reportWrap.appendChild(reportBtn);
+    wrap.appendChild(reportWrap);
   }
 
   app.replaceChildren(wrap);
