@@ -100,6 +100,10 @@
       <label class="field full" data-for="photo"><span class="t">Kuva</span><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><span class="err">⚠ <span class="msg"></span></span>
         <span class="hint">Pienennetään ja sijaintitiedot poistetaan selaimessa ennen lähetystä.</span>
         <img class="photo-preview" hidden alt=""></label>
+      <label class="field full" data-for="credit"><span class="t">Kuvateksti</span><input type="text" name="credit" maxlength="160" placeholder="esim. Kuva: Etunimi Sukunimi" autocomplete="off"></label>
+      <label class="field full" data-for="logo"><span class="t">Logo</span><input type="file" name="logo" accept="image/jpeg,image/png,image/webp"><span class="err">⚠ <span class="msg"></span></span>
+        <span class="hint">Valinnainen erillinen otsikkokuva. Jätä tyhjäksi jos nimi riittää otsikoksi.</span>
+        <img class="logo-preview" hidden alt=""></label>
       <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
       <div class="actions">
         <button class="btn" type="submit" id="create-submit">Luo sivu</button>
@@ -170,6 +174,11 @@
       <label class="field full" data-for="photo"><span class="t">Kuva</span><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><span class="err">⚠ <span class="msg"></span></span>
         <span class="hint">Jätä tyhjäksi jos et halua vaihtaa nykyistä kuvaa. Pienennetään ja sijaintitiedot poistetaan selaimessa.</span>
         <img class="photo-preview" hidden alt=""></label>
+      <label class="field full" data-for="credit"><span class="t">Kuvateksti</span><input type="text" name="credit" maxlength="160" placeholder="esim. Kuva: Etunimi Sukunimi" autocomplete="off">
+        <span class="hint">Tallentuu vain kun lähetät myös kuvan (yllä) — jos kuva pysyy samana, valitse se silti uudelleen.</span></label>
+      <label class="field full" data-for="logo"><span class="t">Logo</span><input type="file" name="logo" accept="image/jpeg,image/png,image/webp"><span class="err">⚠ <span class="msg"></span></span>
+        <span class="hint">Jätä tyhjäksi jos et halua vaihtaa nykyistä logoa.</span>
+        <img class="logo-preview" hidden alt=""></label>
       <div class="actions">
         <button class="btn" type="submit">Tallenna</button>
         <button class="btn ghost" type="button" id="edit-form-cancel">Peruuta</button>
@@ -476,7 +485,7 @@ infoDialog.addEventListener('click', function (e) { if (e.target === infoDialog)
 var createDialog = document.getElementById('create-dialog');
 var createForm = document.getElementById('create-form');
 var codeDialog = document.getElementById('code-dialog');
-var FIELD_LABELS = { title: 'Nimi', city: 'Kaupunki', tagline: 'Kuvaus', tags: 'Tyylilajit', email: 'Yhteystieto', media: 'Linkki', type: 'Tyyppi', photo: 'Kuva' };
+var FIELD_LABELS = { title: 'Nimi', city: 'Kaupunki', tagline: 'Kuvaus', tags: 'Tyylilajit', email: 'Yhteystieto', media: 'Linkki', type: 'Tyyppi', photo: 'Kuva', logo: 'Logo', credit: 'Kuvateksti' };
 
 // ── Kuva: pienennys ja uudelleenkoodaus selaimessa ennen lähetystä ─────────
 // Canvasin kautta piirretty kuva ei koskaan kanna alkuperäisen tiedoston
@@ -511,39 +520,44 @@ function resizeImageFile(file, maxDim) {
   });
 }
 
-function uploadPhoto(id, code, resized) {
+// field on 'photo' tai 'logo' — sama Worker-mekanismi kummallekin. extra voi kantaa
+// kuvatekstin (vain photolle merkitystä, Worker jättää sen logolta huomiotta jos silti lähetettäisiin).
+function uploadImage(id, code, resized, field, extra) {
   var fd = new FormData();
   fd.append('code', code);
-  fd.append('photo', resized.blob, 'photo.jpg');
+  fd.append(field, resized.blob, field + '.jpg');
   fd.append('width', String(resized.width));
   fd.append('height', String(resized.height));
-  return fetch(API_URL + '/posters/' + encodeURIComponent(id) + '/photo', { method: 'POST', body: fd })
+  if (extra) Object.keys(extra).forEach(function (k) { fd.append(k, extra[k]); });
+  return fetch(API_URL + '/posters/' + encodeURIComponent(id) + '/' + field, { method: 'POST', body: fd })
     .then(function (r) { return r.json().catch(function () { return {}; }).then(function (body) { return { status: r.status, body: body }; }); });
 }
 
 // Esikatselu heti tiedoston valinnan jälkeen — sama pienennysfunktio jota lähetyskin käyttää,
 // joten esikatselu näyttää täsmälleen sen mitä lähetetään.
-function wirePhotoPreview(form) {
-  var input = form.elements.photo;
-  var preview = form.querySelector('.photo-preview');
+function wireImagePreview(form, field, previewClass) {
+  var input = form.elements[field];
+  var preview = form.querySelector('.' + previewClass);
   input.addEventListener('change', function () {
-    var field = form.querySelector('.field[data-for="photo"]');
-    field.classList.remove('bad');
+    var fieldEl = form.querySelector('.field[data-for="' + field + '"]');
+    fieldEl.classList.remove('bad');
     var file = input.files[0];
     if (!file) { preview.hidden = true; return; }
     resizeImageFile(file, MAX_PHOTO_DIM).then(function (resized) {
       preview.src = URL.createObjectURL(resized.blob);
       preview.hidden = false;
     }).catch(function (err) {
-      field.classList.add('bad');
-      field.querySelector('.msg').textContent = err.message;
+      fieldEl.classList.add('bad');
+      fieldEl.querySelector('.msg').textContent = err.message;
       input.value = '';
       preview.hidden = true;
     });
   });
 }
-wirePhotoPreview(createForm);
-wirePhotoPreview(document.getElementById('edit-form'));
+wireImagePreview(createForm, 'photo', 'photo-preview');
+wireImagePreview(createForm, 'logo', 'logo-preview');
+wireImagePreview(document.getElementById('edit-form'), 'photo', 'photo-preview');
+wireImagePreview(document.getElementById('edit-form'), 'logo', 'logo-preview');
 
 function openCreateDialog() {
   createForm.reset();
@@ -585,14 +599,17 @@ createForm.addEventListener('submit', async function (e) {
   }
 
   var photoFile = createForm.elements.photo.files[0] || null;
-  var resizedPhoto = null;
-  if (photoFile) {
+  var logoFile = createForm.elements.logo.files[0] || null;
+  var resizedPhoto = null, resizedLogo = null;
+  if (photoFile || logoFile) {
     status.textContent = 'Käsitellään kuvaa…';
     status.className = 'form-status';
     try {
-      resizedPhoto = await resizeImageFile(photoFile, MAX_PHOTO_DIM);
+      if (photoFile) resizedPhoto = await resizeImageFile(photoFile, MAX_PHOTO_DIM);
+      if (logoFile) resizedLogo = await resizeImageFile(logoFile, MAX_PHOTO_DIM);
     } catch (err) {
-      var pf = createForm.querySelector('.field[data-for="photo"]');
+      var badField = photoFile && !resizedPhoto ? 'photo' : 'logo';
+      var pf = createForm.querySelector('.field[data-for="' + badField + '"]');
       pf.classList.add('bad');
       pf.querySelector('.msg').textContent = err.message;
       status.textContent = '';
@@ -601,7 +618,7 @@ createForm.addEventListener('submit', async function (e) {
   }
 
   var data = {};
-  new FormData(createForm).forEach(function (v, k) { if (k !== 'photo') data[k] = v; });
+  new FormData(createForm).forEach(function (v, k) { if (k !== 'photo' && k !== 'logo' && k !== 'credit') data[k] = v; });
   status.textContent = 'Luodaan…';
   status.className = 'form-status';
 
@@ -612,7 +629,11 @@ createForm.addEventListener('submit', async function (e) {
         var id = res.body.id, code = res.body.code;
         if (resizedPhoto) {
           status.textContent = 'Ladataan kuvaa…';
-          try { await uploadPhoto(id, code, resizedPhoto); } catch (e2) { /* ilmoitus on jo luotu — kuvan voi lisätä myöhemmin muokkauksella */ }
+          try { await uploadImage(id, code, resizedPhoto, 'photo', { credit: createForm.elements.credit.value }); } catch (e2) { /* ilmoitus on jo luotu — kuvan voi lisätä myöhemmin muokkauksella */ }
+        }
+        if (resizedLogo) {
+          status.textContent = 'Ladataan logoa…';
+          try { await uploadImage(id, code, resizedLogo, 'logo'); } catch (e3) { /* sama — logon voi lisätä myöhemmin muokkauksella */ }
         }
         createDialog.close();
         loadIndex(true);
@@ -690,8 +711,11 @@ function openEditForm() {
   // syötteeksi (esim. youtube-nocookie.com/embed/... ei ole sallittu muoto).
   editForm.elements.media.value = ((currentPoster.discography || [])
     .map(function (d) { return d.url; }).filter(Boolean)).join('\n');
+  editForm.elements.credit.value = (currentPoster.photo && currentPoster.photo.credit) || '';
   editForm.elements.photo.value = '';
+  editForm.elements.logo.value = '';
   editForm.querySelector('.photo-preview').hidden = true;
+  editForm.querySelector('.logo-preview').hidden = true;
   editForm.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
   document.getElementById('edit-form-status').textContent = '';
   document.getElementById('edit-form-status').className = 'form-status';
@@ -713,14 +737,17 @@ editForm.addEventListener('submit', async function (e) {
   editForm.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
 
   var photoFile = editForm.elements.photo.files[0] || null;
-  var resizedPhoto = null;
-  if (photoFile) {
+  var logoFile = editForm.elements.logo.files[0] || null;
+  var resizedPhoto = null, resizedLogo = null;
+  if (photoFile || logoFile) {
     status.textContent = 'Käsitellään kuvaa…';
     status.className = 'form-status';
     try {
-      resizedPhoto = await resizeImageFile(photoFile, MAX_PHOTO_DIM);
+      if (photoFile) resizedPhoto = await resizeImageFile(photoFile, MAX_PHOTO_DIM);
+      if (logoFile) resizedLogo = await resizeImageFile(logoFile, MAX_PHOTO_DIM);
     } catch (err) {
-      var pf = editForm.querySelector('.field[data-for="photo"]');
+      var badField = photoFile && !resizedPhoto ? 'photo' : 'logo';
+      var pf = editForm.querySelector('.field[data-for="' + badField + '"]');
       pf.classList.add('bad');
       pf.querySelector('.msg').textContent = err.message;
       status.textContent = '';
@@ -729,7 +756,7 @@ editForm.addEventListener('submit', async function (e) {
   }
 
   var data = {};
-  new FormData(editForm).forEach(function (v, k) { if (k !== 'photo') data[k] = v; });
+  new FormData(editForm).forEach(function (v, k) { if (k !== 'photo' && k !== 'logo' && k !== 'credit') data[k] = v; });
   data.code = pendingEditCode;
   status.textContent = 'Tallennetaan…';
   status.className = 'form-status';
@@ -740,11 +767,22 @@ editForm.addEventListener('submit', async function (e) {
       if (res.status === 200) {
         if (resizedPhoto) {
           status.textContent = 'Ladataan kuvaa…';
-          var photoRes = await uploadPhoto(currentPoster.id, pendingEditCode, resizedPhoto);
+          var photoRes = await uploadImage(currentPoster.id, pendingEditCode, resizedPhoto, 'photo', { credit: editForm.elements.credit.value });
           if (photoRes.status !== 201) {
             var pf2 = editForm.querySelector('.field[data-for="photo"]');
             pf2.classList.add('bad');
             pf2.querySelector('.msg').textContent = 'Muut muutokset tallentuivat, mutta kuvan lataus epäonnistui. Yritä uudelleen.';
+            status.textContent = '';
+            return;
+          }
+        }
+        if (resizedLogo) {
+          status.textContent = 'Ladataan logoa…';
+          var logoRes = await uploadImage(currentPoster.id, pendingEditCode, resizedLogo, 'logo');
+          if (logoRes.status !== 201) {
+            var lf2 = editForm.querySelector('.field[data-for="logo"]');
+            lf2.classList.add('bad');
+            lf2.querySelector('.msg').textContent = 'Muut muutokset tallentuivat, mutta logon lataus epäonnistui. Yritä uudelleen.';
             status.textContent = '';
             return;
           }

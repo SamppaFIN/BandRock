@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateCreate, validatePatch, validateGigEntry, todayHelsinki, LIMITS, MAX_TAGS } from '../worker/src/schema.js';
+import { validateCreate, validatePatch, validateGigEntry, sanitizeText, todayHelsinki, LIMITS, MAX_TAGS } from '../worker/src/schema.js';
 
 const TODAY = '2026-09-21';
 const goodCreate = { type: 'bandi', title: 'Ray Jone & The Nekalabama Thunderstorm', city: 'Tampere', tagline: 'Country soul', tags: 'blues, country soul, blues, americana' };
@@ -114,6 +114,14 @@ test('validateGigEntry: linkki vain https ilman tunnuksia', () => {
 test('HTML säilyy tekstinä (sivu näyttää sen textContentilla)', () => {
   const r = validateGigEntry({ date: '2026-10-12', venue: 'X', note: '<script>alert(1)</script>' }, TODAY);
   assert.equal(r.value.note, '<script>alert(1)</script>');
+});
+
+test('sanitizeText: siivoaa ja typistää sen sijaan että hylkäisi, ohjausmerkit tyhjentävät', () => {
+  assert.equal(sanitizeText('  Kuva: Elmo Romppanen  ', LIMITS.credit), 'Kuva: Elmo Romppanen');
+  assert.equal(sanitizeText('', LIMITS.credit), '');
+  assert.equal(sanitizeText(undefined, LIMITS.credit), '');
+  assert.equal(sanitizeText('x'.repeat(200), 10).length, 10);
+  assert.equal(sanitizeText('paha\u0000merkki', LIMITS.credit), '');
 });
 
 test('todayHelsinki: päivä vaihtuu Suomen ajassa', () => {

@@ -1,7 +1,7 @@
 /** Ilmoituksen (posterin) tarkistus ja siivous. Sama koodi Workerissa ja testeissä. */
 import { parseMedia } from './media.js';
 
-export const LIMITS = { title: 80, city: 60, tagline: 400, tag: 30, email: 120, note: 300, venue: 80, url: 300, media: 300 };
+export const LIMITS = { title: 80, city: 60, tagline: 400, tag: 30, email: 120, note: 300, venue: 80, url: 300, media: 300, credit: 160 };
 export const MAX_TAGS = 6;
 export const MAX_MEDIA = 6;
 export const TYPES = new Set(['bandi', 'keikka', 'haku', 'myynti']);
@@ -33,6 +33,14 @@ function httpsHref(s) {
   } catch {
     return null;
   }
+}
+
+/** Vapaaehtoinen lyhyt teksti (esim. kuvan kuvateksti) multipart-lomakkeelta.
+ * Siivoaa ja typistää sen sijaan että hylkäisi — kyse ei ole rakenteellisesta kentästä. */
+export function sanitizeText(raw, limit) {
+  const v = clean(raw);
+  if (!v || BAD_CHARS.test(v)) return '';
+  return len(v) > limit ? [...v].slice(0, limit).join('') : v;
 }
 
 function textField(src, errors, field, limit, required) {

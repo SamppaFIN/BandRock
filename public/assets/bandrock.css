@@ -320,7 +320,7 @@
   .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--gold); background: color-mix(in srgb, black 55%, transparent); }
   .field.bad input, .field.bad textarea { border-color: var(--danger); }
   .field input[type="file"] { padding: 8px 10px; font-size: 15px; }
-  .photo-preview { margin-top: 10px; width: 96px; height: 96px; object-fit: cover; border-radius: 10px; border: 1px solid var(--hairline); }
+  .photo-preview, .logo-preview { margin-top: 10px; width: 96px; height: 96px; object-fit: cover; border-radius: 10px; border: 1px solid var(--hairline); }
   .field .err { display: none; font-size: 14px; color: var(--danger); }
   .field.bad .err { display: block; }
 

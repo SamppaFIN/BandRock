@@ -7,7 +7,8 @@
  *   PATCH  /api/posters/:id          muokkaus koodilla (vain lomakkeen kentät, muu sisältö säilyy)
  *   DELETE /api/posters/:id          poisto koodilla
  *   POST   /api/posters/:id/gigs     yhden keikan lisäys koodilla
- *   POST   /api/posters/:id/photo    bändin kuvan lataus koodilla (multipart/form-data)
+ *   POST   /api/posters/:id/photo    bändin kuvan lataus koodilla (multipart/form-data, voi sisältää credit-kentän)
+ *   POST   /api/posters/:id/logo     bändin logon lataus koodilla (sama muoto, ei kuvatekstiä)
  *   POST   /api/posters/:id/report   "ilmoita asiaton" — anonyymi, ei koodia, nostaa laskuria
  *   GET    /img/<id>/<tiedosto>      ladattu kuva
  *   GET    /admin                    ylläpitosivu (kysyy ADMIN_SECRETin selaimessa)
@@ -18,7 +19,7 @@
  * Ilmoittajasta ei tallenneta mitään pysyvästi. IP:tä käytetään vain ohimenevästi
  * nopeusrajoittimen avaimena (Cloudflaren oma rajoitinpalvelu), ei kirjoiteta R2:een.
  */
-import { validateCreate, validatePatch, validateGigEntry } from './schema.js';
+import { validateCreate, validatePatch, validateGigEntry, sanitizeText, LIMITS } from './schema.js';
 import { generateCode, hashCode, verifyCode, verifyAdmin, slugify } from './code.js';
 import { detectImageType, MAX_IMAGE_BYTES } from './image.js';
 
@@ -260,7 +261,8 @@ function photoKeyOf(src) {
   }
 }
 
-async function uploadPhoto(request, env, id, cors) {
+// field on 'photo' (bändikuva, voi kantaa kuvatekstin) tai 'logo' (otsikkokuva, ei kuvatekstiä).
+async function uploadImage(request, env, id, field, cors) {
   let form;
   try {
     form = await request.formData();
@@ -274,37 +276,42 @@ async function uploadPhoto(request, env, id, cors) {
   const { poster, error: authError } = await loadForEdit(env, id, code);
   if (authError) return json(await authError.json(), authError.status, cors);
 
-  const file = form.get('photo');
+  const file = form.get(field);
   if (!(file instanceof File) || file.size === 0) {
-    return json({ error: 'invalid', fields: { photo: 'Valitse kuva.' } }, 400, cors);
+    return json({ error: 'invalid', fields: { [field]: 'Valitse kuva.' } }, 400, cors);
   }
   if (file.size > MAX_IMAGE_BYTES) {
-    return json({ error: 'invalid', fields: { photo: 'Kuva on liian suuri.' } }, 400, cors);
+    return json({ error: 'invalid', fields: { [field]: 'Kuva on liian suuri.' } }, 400, cors);
   }
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const detected = detectImageType(bytes);
   if (!detected) {
-    return json({ error: 'invalid', fields: { photo: 'Tiedosto ei ole tunnistettu kuva (JPEG, PNG tai WebP).' } }, 400, cors);
+    return json({ error: 'invalid', fields: { [field]: 'Tiedosto ei ole tunnistettu kuva (JPEG, PNG tai WebP).' } }, 400, cors);
   }
 
   // Vanha kuva pois, jos korvataan uudella — ei jätetä orpoja tiedostoja R2:een.
-  // photo.src on täysi osoite (esim. https://bandrock.xxx.workers.dev/img/<id>/<ts>.jpg);
+  // <field>.src on täysi osoite (esim. https://bandrock.xxx.workers.dev/img/<id>/<ts>-logo.jpg);
   // R2-avain on sen polku ilman alkukauttaviivaa.
-  const oldKey = photoKeyOf(poster.photo && poster.photo.src);
+  const oldKey = photoKeyOf(poster[field] && poster[field].src);
   if (oldKey && oldKey.startsWith(`img/${id}/`)) {
     await env.BUCKET.delete(oldKey).catch(() => {});
   }
 
   const width = Math.round(Number(form.get('width'))) || null;
   const height = Math.round(Number(form.get('height'))) || null;
-  const key = `img/${id}/${Date.now()}.${detected.ext}`;
+  const key = `img/${id}/${Date.now()}-${field}.${detected.ext}`;
   await env.BUCKET.put(key, bytes, { httpMetadata: { contentType: detected.type } });
 
   // Täysi osoite, ei suhteellinen polku: kuva tarjoillaan tältä Workerilta, ei sivustolta
   // (toisin kuin esim. Ray Jonen valmis img/band.jpg, joka on osa itse sivuston tiedostoja).
   const src = `${new URL(request.url).origin}/${key}`;
-  const updated = { ...poster, photo: { src, width, height, alt: poster.title }, updated: Date.now() };
+  const imageValue = { src, width, height, alt: poster.title };
+  if (field === 'photo') {
+    const credit = sanitizeText(form.get('credit'), LIMITS.credit);
+    if (credit) imageValue.credit = credit;
+  }
+  const updated = { ...poster, [field]: imageValue, updated: Date.now() };
   await env.BUCKET.put(`posters/${id}.json`, JSON.stringify(updated), { customMetadata: customMetaFor(updated) });
   await purgeListCache();
   return json({ ok: true, src: key }, 201, cors);
@@ -511,9 +518,9 @@ export default {
       } else if (parts.length === 4 && parts[3] === 'gigs') {
         const id = decodeURIComponent(parts[2]);
         if (request.method === 'POST') return await addGig(request, env, id, cors);
-      } else if (parts.length === 4 && parts[3] === 'photo') {
+      } else if (parts.length === 4 && (parts[3] === 'photo' || parts[3] === 'logo')) {
         const id = decodeURIComponent(parts[2]);
-        if (request.method === 'POST') return await uploadPhoto(request, env, id, cors);
+        if (request.method === 'POST') return await uploadImage(request, env, id, parts[3], cors);
       } else if (parts.length === 4 && parts[3] === 'report') {
         const id = decodeURIComponent(parts[2]);
         if (request.method === 'POST') return await reportPoster(env, id, cors);
