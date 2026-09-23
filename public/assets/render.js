@@ -95,6 +95,17 @@ function buildGigItem(g) {
       li.appendChild(el('span'));
     }
 
+    if (g.photo && g.photo.src) {
+      var gp = document.createElement('img');
+      gp.className = 'gig-photo';
+      gp.src = g.photo.src;
+      if (g.photo.width) gp.width = g.photo.width;
+      if (g.photo.height) gp.height = g.photo.height;
+      gp.alt = g.venue;
+      gp.loading = 'lazy';
+      li.appendChild(gp);
+    }
+
     var info = g.embed ? playerFor(g.embed) : null;
     if (info) {
       var btn = el('button', 'play', '▶ Kuuntele (' + info.label + ')');

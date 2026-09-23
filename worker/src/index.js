@@ -6,7 +6,7 @@
  *   POST   /api/posters              uusi ilmoitus; palauttaa koodin KERRAN
  *   PATCH  /api/posters/:id          muokkaus koodilla (vain lomakkeen kentät, muu sisältö säilyy)
  *   DELETE /api/posters/:id          poisto koodilla
- *   POST   /api/posters/:id/gigs     yhden keikan lisäys koodilla
+ *   POST   /api/posters/:id/gigs     yhden keikan lisäys koodilla (JSON, tai multipart jos keikalla on kuva)
  *   POST   /api/posters/:id/photo    bändin kuvan lataus koodilla (multipart/form-data, voi sisältää credit-kentän)
  *   POST   /api/posters/:id/logo     bändin logon lataus koodilla (sama muoto, ei kuvatekstiä)
  *   POST   /api/posters/:id/report   "ilmoita asiaton" — anonyymi, ei koodia, nostaa laskuria
@@ -233,9 +233,34 @@ async function deletePoster(request, env, id, cors) {
   return json({ ok: true }, 200, cors);
 }
 
+// Tarkistaa ladatun kuvatiedoston (koko + tyyppi alkutavuista). Palauttaa joko
+// { bytes, detected } tai { fieldError } jonka kutsuja muuttaa 400-vastaukseksi.
+async function readImage(file) {
+  if (!(file instanceof File) || file.size === 0) return { fieldError: 'Valitse kuva.' };
+  if (file.size > MAX_IMAGE_BYTES) return { fieldError: 'Kuva on liian suuri.' };
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const detected = detectImageType(bytes);
+  if (!detected) return { fieldError: 'Tiedosto ei ole tunnistettu kuva (JPEG, PNG tai WebP).' };
+  return { bytes, detected };
+}
+
+// Keikan lisäys. JSON kuten ennen; jos keikalle liitetään kuva, lähetys on
+// multipart/form-data (kentät + photo), jolloin keikka ja sen kuva tallentuvat yhdellä pyynnöllä.
 async function addGig(request, env, id, cors) {
-  const { value: input, error } = await readBody(request);
-  if (error) return json(await error.json(), error.status, cors);
+  let input, form = null;
+  if ((request.headers.get('content-type') || '').startsWith('multipart/form-data')) {
+    try {
+      form = await request.formData();
+    } catch {
+      return json({ error: 'bad_form' }, 400, cors);
+    }
+    input = {};
+    for (const [k, v] of form.entries()) if (typeof v === 'string') input[k] = v;
+  } else {
+    const { value, error } = await readBody(request);
+    if (error) return json(await error.json(), error.status, cors);
+    input = value;
+  }
 
   if (await rateLimited(env, `edit:${id}`)) return json({ error: 'busy' }, 429, cors);
 
@@ -245,7 +270,21 @@ async function addGig(request, env, id, cors) {
   const result = validateGigEntry(input);
   if (!result.ok) return json({ error: 'invalid', fields: result.errors }, 400, cors);
 
-  const updated = { ...poster, gigs: [...(poster.gigs || []), result.value], updated: Date.now() };
+  const gig = { ...result.value };
+  const file = form && form.get('photo');
+  if (file) {
+    const img = await readImage(file);
+    if (img.fieldError) return json({ error: 'invalid', fields: { photo: img.fieldError } }, 400, cors);
+    const key = `img/${id}/${Date.now()}-gig.${img.detected.ext}`;
+    await env.BUCKET.put(key, img.bytes, { httpMetadata: { contentType: img.detected.type } });
+    gig.photo = {
+      src: `${new URL(request.url).origin}/${key}`,
+      width: Math.round(Number(form.get('width'))) || null,
+      height: Math.round(Number(form.get('height'))) || null,
+    };
+  }
+
+  const updated = { ...poster, gigs: [...(poster.gigs || []), gig], updated: Date.now() };
   await env.BUCKET.put(`posters/${id}.json`, JSON.stringify(updated), { customMetadata: customMetaFor(updated) });
   return json({ ok: true }, 201, cors);
 }
@@ -276,19 +315,9 @@ async function uploadImage(request, env, id, field, cors) {
   const { poster, error: authError } = await loadForEdit(env, id, code);
   if (authError) return json(await authError.json(), authError.status, cors);
 
-  const file = form.get(field);
-  if (!(file instanceof File) || file.size === 0) {
-    return json({ error: 'invalid', fields: { [field]: 'Valitse kuva.' } }, 400, cors);
-  }
-  if (file.size > MAX_IMAGE_BYTES) {
-    return json({ error: 'invalid', fields: { [field]: 'Kuva on liian suuri.' } }, 400, cors);
-  }
-
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const detected = detectImageType(bytes);
-  if (!detected) {
-    return json({ error: 'invalid', fields: { [field]: 'Tiedosto ei ole tunnistettu kuva (JPEG, PNG tai WebP).' } }, 400, cors);
-  }
+  const img = await readImage(form.get(field));
+  if (img.fieldError) return json({ error: 'invalid', fields: { [field]: img.fieldError } }, 400, cors);
+  const { bytes, detected } = img;
 
   // Vanha kuva pois, jos korvataan uudella — ei jätetä orpoja tiedostoja R2:een.
   // <field>.src on täysi osoite (esim. https://bandrock.xxx.workers.dev/img/<id>/<ts>-logo.jpg);

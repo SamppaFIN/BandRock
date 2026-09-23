@@ -202,6 +202,9 @@
       <label class="field" data-for="city"><span class="t">Kaupunki</span><input type="text" name="city" maxlength="60" autocomplete="off"></label>
       <label class="field full" data-for="note"><span class="t">Lisätietoa</span><input type="text" name="note" maxlength="300" placeholder="esim. vapaa pääsy, ovet 19"></label>
       <label class="field full" data-for="url"><span class="t">Info- tai lippulinkki</span><input type="url" name="url" maxlength="300" placeholder="https://"><span class="err">⚠ <span class="msg"></span></span></label>
+      <label class="field full" data-for="photo"><span class="t">Kuva</span><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><span class="err">⚠ <span class="msg"></span></span>
+        <span class="hint">Esim. keikkajuliste. Pienennetään ja sijaintitiedot poistetaan selaimessa ennen lähetystä.</span>
+        <img class="photo-preview" hidden alt=""></label>
       <label class="field full" data-for="code"><span class="t">Sivun 5-merkkinen koodi *</span><input type="text" name="code" required maxlength="5" autocomplete="off" autocapitalize="characters"><span class="err">⚠ <span class="msg"></span></span></label>
       <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
       <div class="actions">
@@ -561,6 +564,8 @@ wireImagePreview(document.getElementById('edit-form'), 'logo', 'logo-preview');
 
 function openCreateDialog() {
   createForm.reset();
+  createForm.querySelector('.photo-preview').hidden = true;
+  createForm.querySelector('.logo-preview').hidden = true;
   document.getElementById('create-status').textContent = '';
   document.getElementById('create-status').className = 'form-status';
   createForm.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
@@ -819,6 +824,7 @@ var gigDialog = document.getElementById('gig-dialog');
 var gigForm = document.getElementById('gig-form');
 function openGigDialog() {
   gigForm.reset();
+  gigForm.querySelector('.photo-preview').hidden = true;
   gigForm.elements.date.min = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   document.getElementById('gig-form-status').textContent = '';
   document.getElementById('gig-form-status').className = 'form-status';
@@ -834,7 +840,9 @@ function markGigField(name, msg) {
   if (msg) f.querySelector('.msg').textContent = msg;
 }
 
-gigForm.addEventListener('submit', function (e) {
+wireImagePreview(gigForm, 'photo', 'photo-preview');
+
+gigForm.addEventListener('submit', async function (e) {
   e.preventDefault();
   var status = document.getElementById('gig-form-status');
   gigForm.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
@@ -845,12 +853,38 @@ gigForm.addEventListener('submit', function (e) {
     return;
   }
 
-  var data = {};
-  new FormData(gigForm).forEach(function (v, k) { data[k] = v; });
+  var resizedPhoto = null;
+  var photoFile = gigForm.elements.photo.files[0] || null;
+  if (photoFile) {
+    status.textContent = 'Käsitellään kuvaa…';
+    status.className = 'form-status';
+    try {
+      resizedPhoto = await resizeImageFile(photoFile, MAX_PHOTO_DIM);
+    } catch (err) {
+      markGigField('photo', err.message);
+      status.textContent = '';
+      return;
+    }
+  }
+
+  // Ilman kuvaa JSON kuten ennen; kuvan kanssa multipart, jolloin keikka ja kuva tallentuvat yhdellä pyynnöllä.
+  var req;
+  if (resizedPhoto) {
+    var fd = new FormData();
+    new FormData(gigForm).forEach(function (v, k) { if (k !== 'photo') fd.append(k, v); });
+    fd.append('photo', resizedPhoto.blob, 'photo.jpg');
+    fd.append('width', String(resizedPhoto.width));
+    fd.append('height', String(resizedPhoto.height));
+    req = { method: 'POST', body: fd };
+  } else {
+    var data = {};
+    new FormData(gigForm).forEach(function (v, k) { if (k !== 'photo') data[k] = v; });
+    req = { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) };
+  }
   status.textContent = 'Lisätään…';
   status.className = 'form-status';
 
-  fetch(API_URL + '/posters/' + encodeURIComponent(currentPoster.id) + '/gigs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) })
+  fetch(API_URL + '/posters/' + encodeURIComponent(currentPoster.id) + '/gigs', req)
     .then(function (r) { return r.json().catch(function () { return {}; }).then(function (body) { return { status: r.status, body: body }; }); })
     .then(function (res) {
       if (res.status === 201) {
