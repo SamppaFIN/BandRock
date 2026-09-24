@@ -20,7 +20,7 @@
  * nopeusrajoittimen avaimena (Cloudflaren oma rajoitinpalvelu), ei kirjoiteta R2:een.
  */
 import { validateCreate, validatePatch, validateGigEntry, sanitizeText, LIMITS } from './schema.js';
-import { generateCode, hashCode, verifyCode, verifyAdmin, slugify } from './code.js';
+import { generateCode, hashCode, verifyCode, verifyAdmin, isMasterCode, slugify } from './code.js';
 import { detectImageType, MAX_IMAGE_BYTES } from './image.js';
 
 const MAX_BODY = 8192;
@@ -183,11 +183,11 @@ async function createPoster(request, env, cors) {
   return json({ ok: true, id, code }, 201, cors);
 }
 
-async function loadForEdit(env, id, code) {
+async function loadForEdit(env, id, code, purpose = 'edit') {
   const obj = await env.BUCKET.get(`posters/${id}.json`);
   if (!obj) return { error: json({ error: 'not_found' }, 404) };
   const poster = await obj.json();
-  const ok = await verifyCode(code, poster.codeHash, env.CODE_SECRET);
+  const ok = isMasterCode(code, purpose) || (await verifyCode(code, poster.codeHash, env.CODE_SECRET));
   if (!ok) return { error: json({ error: 'forbidden' }, 403) };
   return { poster };
 }
@@ -225,7 +225,7 @@ async function deletePoster(request, env, id, cors) {
 
   if (await rateLimited(env, `edit:${id}`)) return json({ error: 'busy' }, 429, cors);
 
-  const { error: authError } = await loadForEdit(env, id, String((input && input.code) || ''));
+  const { error: authError } = await loadForEdit(env, id, String((input && input.code) || ''), 'delete');
   if (authError) return json(await authError.json(), authError.status, cors);
 
   await env.BUCKET.delete(`posters/${id}.json`);

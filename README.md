@@ -80,6 +80,7 @@ Avaa sivu paikallisesti osoitteessa `http://localhost:8080/?api=http://localhost
 - Jokainen ilmoitus saa oman 5-merkkisen koodin luonnin yhteydessä. Koodi näytetään **kerran**, eikä sitä voi palauttaa — vain sen HMAC-tiiviste (`codeHash`) tallennetaan R2:een.
 - Ilmoituksen tunnus (`id`, esim. `ray-jone`) ja muokkauskoodi ovat aina täysin erilliset — koodi ei koskaan esiinny id:ssä, URL:ssa eikä missään julkisessa vastauksessa.
 - Ray Jonen koodi on tarkoituksella kiinteä ja tunnettu: **00000**.
+- **Yleisavaimet (testivaihe):** `00000` muokkaa mitä tahansa ilmoitusta (ei poista), `99999` poistaa minkä tahansa (ei muokkaa). Koodit ovat julkisia, joten kuka tahansa voi käyttää niitä — poista ne (`isMasterCode`, `worker/src/code.js`) ennen kuin sivua jaetaan laajemmin.
 
 ## Rajat ja suojat
 

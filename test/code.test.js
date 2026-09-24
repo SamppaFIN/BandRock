@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateCode, hashCode, verifyCode, verifyAdmin, slugify } from '../worker/src/code.js';
+import { generateCode, hashCode, verifyCode, verifyAdmin, isMasterCode, slugify } from '../worker/src/code.js';
 
 test('generateCode: 5 merkkiä, ei sekoitettavia kirjaimia (0/O, 1/I/L)', () => {
   for (let i = 0; i < 200; i++) {
@@ -49,6 +49,22 @@ test('verifyAdmin: oikea salasana hyväksytään, väärä ei, puuttuva ei koska
   assert.equal(verifyAdmin('salasana123', undefined), false);
   // eripituiset merkkijonot eivät koskaan täsmää (ei kaadu pituusvertailuun)
   assert.equal(verifyAdmin('lyhyt', 'paljon-pidempi-salasana'), false);
+});
+
+test('isMasterCode: 00000 vain muokkaukseen, 99999 vain poistoon, ei ristiin', () => {
+  assert.equal(isMasterCode('00000', 'edit'), true);
+  assert.equal(isMasterCode('99999', 'delete'), true);
+  assert.equal(isMasterCode('00000', 'delete'), false);
+  assert.equal(isMasterCode('99999', 'edit'), false);
+});
+
+test('isMasterCode: muut arvot ja tuntematon käyttötarkoitus eivät koskaan kelpaa', () => {
+  for (const v of ['', '0000', '000000', '11111', 'ABCDE', undefined, null, 0, 99999]) {
+    assert.equal(isMasterCode(v, 'edit'), false, String(v));
+    assert.equal(isMasterCode(v, 'delete'), false, String(v));
+  }
+  assert.equal(isMasterCode('00000', undefined), false);
+  assert.equal(isMasterCode('00000', 'admin'), false);
 });
 
 test('slugify: nimestä luettava, URL-turvallinen tunnus', () => {

@@ -198,6 +198,14 @@ Tiketit 1–12 koskevat vanhaa yhden-bändin sivua (osa on yhä ajan tasalla, os
 - Vanha kuva poistetaan R2:sta aina kun korvataan uudella — ei jää orpoja tiedostoja.
 - EXIF-poisto (mukaan lukien GPS-sijainti) ei ole pelkkä oletus: testattu **rakenteellisesti** — pienennetyssä kuvassa ei ole EXIF (APP1) -merkkiä lainkaan, riippumatta oliko alkuperäisessä kuvassa sellaista.
 
+**Päätetty (Infinite, 24.9.2026) — Yleisavaimet 00000 ja 99999**
+- **`00000` = yleisavain muokkaukseen**: toimii minkä tahansa ilmoituksen muokkaukseen, keikan lisäykseen sekä kuvan ja logon lataukseen omistajan koodin sijaan. **Ei poista.**
+- **`99999` = yleisavain poistoon**: poistaa minkä tahansa ilmoituksen. **Ei muokkaa.**
+- Omistajan oma koodi toimii ennallaan. Toteutus: `worker/src/code.js` (`isMasterCode(code, 'edit'|'delete')`, aikavakioinen vertailu), `loadForEdit(..., purpose)` `worker/src/index.js`:ssä; vain `deletePoster` käyttää `'delete'`-käyttötarkoitusta. Testattu: 2 yksikkötestiä + 20 API-tarkistusta (ristiin ei toimi, väärä koodi 403, tuntematon ilmoitus 404).
+- ⚠️ **Tietoinen tietoturvakompromissi:** koodit ovat julkisessa repossa ja README:ssä, joten **kuka tahansa voi muokata tai poistaa minkä tahansa ilmoituksen** — nämä eivät ole salaisuuksia. Sopii testivaiheeseen ("testikäyttäjiä on vähän"), ei jaettavaan julkaisuun. Ennen laajempaa jakoa: poista yleisavaimet tai siirrä ne Worker-salaisuuksiksi (`wrangler secret put`), ja käytä `/admin`-sivua (`ADMIN_SECRET`) moderointiin. Rajoitin (20/60 s per ilmoitus) hidastaa vain arvausta, ei tunnettua koodia.
+- **Poiston käyttöliittymä puuttuu edelleen** — `DELETE /api/posters/:id` on vain API:ssa (selaimessa ei ole "Poista sivu" -nappia), joten 99999 toimii toistaiseksi vain suoraan API-kutsulla.
+- Aiempi "tunnuksella 99999 voi poistaa minkä vaan" -epäily (Opit) ei ollut bugi silloin, mutta on ominaisuus tästä eteenpäin.
+
 **Päätetty (Infinite, 24.9.2026) — Suora äänitiedostolinkki (esim. mp3tourl.com)**
 - `media`-kenttään (yksi linkki per rivi) kelpaa nyt myös suora https-linkki äänitiedostoon (`.mp3 .m4a .aac .ogg .oga .opus .wav .flac`), ei vain YouTube/Spotify/SoundCloud. `worker/src/media.js`: `parseAudio()`. Tallentuu `{ url, audio }` (ei `embed`) — `render.js` piirtää natiivin `<audio controls preload="none">`, jonka alla näkyy lähdepalvelimen nimi ("Ääni · host").
 - **Miksi ei palvelukohtaista sallittujen listaa (kuten iframeille):** ääni ei voi ajaa skriptejä, eikä Worker hae osoitetta itse, joten iframe-sääntö ("palvelin rakentaa osoitteen") ei koske sitä. Riskit rajattu: vain https, ei tunnuksia/porttia, ei IP-osoitteita/localhostia/`.local`/`.internal`/pisteetöntä nimeä (ettei kävijän selain koske lähiverkkoon), pääte pakollinen, `preload="none"` (kävijän selain ei ota yhteyttä kolmanteen osapuoleen ennen kuin toistoa painetaan — testattu resurssipyyntölistasta).

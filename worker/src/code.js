@@ -35,6 +35,19 @@ export async function verifyCode(code, storedHash, secret) {
   return timingSafeEqual(hash, storedHash);
 }
 
+// Yleisavaimet (Infiniten päätös 24.9.2026): kiinteitä, tarkoituksella tunnettuja koodeja
+// jotka toimivat KAIKKIIN ilmoituksiin. 00000 vain muokkaukseen (tiedot, kuvat, keikat),
+// 99999 vain poistoon. Omistajan oma koodi toimii kuten ennenkin.
+export const MASTER_EDIT_CODE = '00000';
+export const MASTER_DELETE_CODE = '99999';
+
+/** purpose: 'edit' | 'delete'. Ristiin ei toimi: 00000 ei poista, 99999 ei muokkaa. */
+export function isMasterCode(code, purpose) {
+  if (typeof code !== 'string') return false;
+  const master = purpose === 'delete' ? MASTER_DELETE_CODE : purpose === 'edit' ? MASTER_EDIT_CODE : null;
+  return master !== null && timingSafeEqual(code.trim(), master);
+}
+
 /** Ylläpitosalasanan vertailu (env.ADMIN_SECRET). Aikavakioinen, ei riipu pituudesta ulospäin. */
 export function verifyAdmin(given, secret) {
   if (typeof given !== 'string' || !given || typeof secret !== 'string' || !secret) return false;
