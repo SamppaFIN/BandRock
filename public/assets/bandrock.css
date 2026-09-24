@@ -178,6 +178,9 @@
   .video iframe { width: 100%; height: 100%; border: 0; }
   .spotify { position: relative; height: 154px; border-radius: 12px; overflow: hidden; border: 1px solid var(--hairline); background: #000; display: flex; align-items: center; justify-content: center; }
   .spotify iframe { width: 100%; height: 100%; border: 0; background: #000; color-scheme: dark; }
+  .audio-box { margin-top: 12px; }
+  .audio-box audio { display: block; width: 100%; color-scheme: dark; }
+  .audio-src { margin-top: 4px; font-size: 13px; color: var(--text-faint); overflow-wrap: anywhere; }
   /* Peittää upotuksen ennen kuin se on ehtinyt piirtyä (ks. render.js: buildAutoPlayer). */
   .spotify.cloak::after { content: ''; position: absolute; inset: 0; background: #000; pointer-events: none; }
 

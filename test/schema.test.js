@@ -128,3 +128,12 @@ test('todayHelsinki: päivä vaihtuu Suomen ajassa', () => {
   assert.equal(todayHelsinki(new Date('2026-09-20T22:30:00Z')), '2026-09-21');
   assert.equal(todayHelsinki(new Date('2026-09-20T20:30:00Z')), '2026-09-20');
 });
+
+test('validateCreate: suora äänitiedosto tallentuu audio-kenttänä, palvelulinkit ennallaan, sekarivit toimivat', () => {
+  const mix = ['https://youtu.be/GKlZrIftTZ8', 'https://cdn.example.com/madrid.mp3'].join('\n');
+  const r = validateCreate({ title: 'X', media: mix });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.value.discography[0], { url: 'https://youtu.be/GKlZrIftTZ8', embed: 'https://www.youtube-nocookie.com/embed/GKlZrIftTZ8' });
+  assert.deepEqual(r.value.discography[1], { url: 'https://cdn.example.com/madrid.mp3', audio: 'https://cdn.example.com/madrid.mp3' });
+  assert.deepEqual(fields(validateCreate, { title: 'X', media: 'https://cdn.example.com/sivu.html' }), ['media']);
+});

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMedia } from '../worker/src/media.js';
+import { parseMedia, parseAudio } from '../worker/src/media.js';
 import { validateCreate } from '../worker/src/schema.js';
 
 const YT = 'https://www.youtube-nocookie.com/embed/GKlZrIftTZ8';
@@ -95,4 +95,41 @@ test('validateCreate: soitinlinkki muuttuu upotusosoitteeksi, väärä linkki an
 
   const none = validateCreate({ ...base, media: '' });
   assert.deepEqual(none.value.discography, []);
+});
+
+test('Ääni: suora https-tiedostolinkki hyväksytään, kyselyosa ja pääte-kirjainkoko sallitaan', () => {
+  assert.equal(parseAudio('https://cdn.example.com/biisit/madrid.mp3'), 'https://cdn.example.com/biisit/madrid.mp3');
+  assert.equal(parseAudio('https://cdn.example.com/a/Madrid.M4A?token=abc'), 'https://cdn.example.com/a/Madrid.M4A?token=abc');
+  for (const ext of ['mp3', 'm4a', 'aac', 'ogg', 'oga', 'opus', 'wav', 'flac']) {
+    assert.ok(parseAudio(`https://files.example.org/x.${ext}`), ext);
+  }
+});
+
+test('Ääni: ei-https, tunnukset, portti ja väärä pääte hylätään', () => {
+  for (const url of [
+    'http://cdn.example.com/a.mp3',
+    'https://user:pw@cdn.example.com/a.mp3',
+    'https://cdn.example.com:8443/a.mp3',
+    'https://cdn.example.com/a.mp3.exe',
+    'https://cdn.example.com/a.html',
+    'https://cdn.example.com/audio',
+    'javascript:alert(1).mp3',
+    'ei linkki',
+  ]) {
+    assert.equal(parseAudio(url), null, url);
+  }
+});
+
+test('Ääni: osoitteet jotka osuisivat kävijän omaan koneeseen tai lähiverkkoon hylätään', () => {
+  for (const url of [
+    'https://localhost/a.mp3',
+    'https://127.0.0.1/a.mp3',
+    'https://192.168.1.10/a.mp3',
+    'https://[::1]/a.mp3',
+    'https://nas.local/a.mp3',
+    'https://printer.internal/a.mp3',
+    'https://intranet/a.mp3',
+  ]) {
+    assert.equal(parseAudio(url), null, url);
+  }
 });

@@ -59,6 +59,23 @@ function buildAutoPlayer(info, src, title) {
   return box;
 }
 
+// Suora äänitiedosto. Natiivi <audio>, preload="none": selain ei hae mitään ennen kuin
+// kuuntelija painaa toistoa. Palvelin on jo tarkistanut osoitteen; https varmistetaan silti.
+function buildAudioPlayer(url) {
+  if (!/^https:\/\//.test(url)) return null;
+  var host = '';
+  try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return null; }
+  var box = el('div', 'audio-box');
+  var a = document.createElement('audio');
+  a.controls = true;
+  a.preload = 'none';
+  a.src = url;
+  a.setAttribute('aria-label', 'Äänitiedosto (' + host + ')');
+  box.appendChild(a);
+  box.appendChild(el('div', 'audio-src', 'Ääni · ' + host));
+  return box;
+}
+
 export function slugify(text) {
   return (text || '')
     .toLowerCase()
@@ -282,6 +299,11 @@ export function renderDetail(poster) {
     listenSec.appendChild(head);
 
     disco.forEach(function (item) {
+      if (item.audio) {
+        var ap = buildAudioPlayer(item.audio);
+        if (ap) listenSec.appendChild(ap);
+        return;
+      }
       var info = playerFor(item.embed);
       if (!info) return;
       if (info.ratio) {

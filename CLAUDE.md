@@ -198,6 +198,12 @@ Tiketit 1–12 koskevat vanhaa yhden-bändin sivua (osa on yhä ajan tasalla, os
 - Vanha kuva poistetaan R2:sta aina kun korvataan uudella — ei jää orpoja tiedostoja.
 - EXIF-poisto (mukaan lukien GPS-sijainti) ei ole pelkkä oletus: testattu **rakenteellisesti** — pienennetyssä kuvassa ei ole EXIF (APP1) -merkkiä lainkaan, riippumatta oliko alkuperäisessä kuvassa sellaista.
 
+**Päätetty (Infinite, 24.9.2026) — Suora äänitiedostolinkki (esim. mp3tourl.com)**
+- `media`-kenttään (yksi linkki per rivi) kelpaa nyt myös suora https-linkki äänitiedostoon (`.mp3 .m4a .aac .ogg .oga .opus .wav .flac`), ei vain YouTube/Spotify/SoundCloud. `worker/src/media.js`: `parseAudio()`. Tallentuu `{ url, audio }` (ei `embed`) — `render.js` piirtää natiivin `<audio controls preload="none">`, jonka alla näkyy lähdepalvelimen nimi ("Ääni · host").
+- **Miksi ei palvelukohtaista sallittujen listaa (kuten iframeille):** ääni ei voi ajaa skriptejä, eikä Worker hae osoitetta itse, joten iframe-sääntö ("palvelin rakentaa osoitteen") ei koske sitä. Riskit rajattu: vain https, ei tunnuksia/porttia, ei IP-osoitteita/localhostia/`.local`/`.internal`/pisteetöntä nimeä (ettei kävijän selain koske lähiverkkoon), pääte pakollinen, `preload="none"` (kävijän selain ei ota yhteyttä kolmanteen osapuoleen ennen kuin toistoa painetaan — testattu resurssipyyntölistasta).
+- ⚠️ **mp3tourl.com:in linkkimuotoa ei pystytty vahvistamaan** (sivu ei kerro sitä, eikä sinne ladata testitiedostoa). Jos sen linkeissä ei ole `.mp3`-päätettä tai tiedosto tarjoillaan päätteettömältä polulta, ne hylätään — silloin tarvitaan yksi oikea esimerkkilinkki, jonka pohjalta lisätään sen verkkotunnus erikseen. Sivun omat väitteet (pysyvä linkki, 100 Mt) ovat vahvistamatta.
+- Bandcamp yms. sivut (ei suoraa tiedostoa) eivät toimi edelleenkään.
+
 **Päätetty (Infinite, 22.9.2026) — Ylläpito ja piilotus (jatkoa Turnstile-tiketille, tehty ennen sitä)**
 - Kuka tahansa voi ilmoittaa minkä tahansa sivun asiattomaksi ilman kirjautumista tai koodia (`POST /api/posters/:id/report`, kaksoisklikkausvarmistus käyttöliittymässä). Laskuri (`reports`) vain kasvaa — ilmoitus **ei koskaan piilota automaattisesti**, jotta yksi ilkeämielinen massailmoittelu ei voi hiljentää ketään. Ylläpitäjä päättää aina käsin.
 - Ylläpidolla on oma salaisuus `ADMIN_SECRET`, erillinen jokaisen bändin omasta muokkauskoodista. `x-admin-key`-otsikko, aikavakioinen vertailu (`verifyAdmin`, sama malli kuin `verifyCode`).

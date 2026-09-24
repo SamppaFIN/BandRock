@@ -32,6 +32,28 @@ function soundcloud(parts) {
   return `https://w.soundcloud.com/player/?url=${encodeURIComponent(track)}&color=%23f5b122&visual=false`;
 }
 
+// Suora äänitiedostolinkki (esim. mp3tourl.com, oma palvelin). Toisin kuin yllä olevat
+// palvelut tämä toistetaan <audio>-elementillä, ei iframella: ääni ei voi ajaa skriptejä,
+// ja selain hakee tiedoston vasta kun kuuntelija painaa toistoa (preload="none").
+// Palvelin ei koskaan itse hae osoitetta. Hylätään osoitteet jotka viittaisivat kävijän
+// omaan koneeseen tai lähiverkkoon (IP-osoitteet, localhost, ei-pisteellistä nimeä).
+const AUDIO_EXT = /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac)$/i;
+
+export function parseAudio(raw) {
+  let u;
+  try {
+    u = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== 'https:' || u.username || u.password || u.port) return null;
+  const host = u.hostname.toLowerCase();
+  if (!host.includes('.') || host.startsWith('[') || /^[\d.]+$/.test(host)) return null;
+  if (/\.(local|localhost|internal|lan|home|test)$/.test(host)) return null;
+  if (!AUDIO_EXT.test(u.pathname)) return null;
+  return u.href;
+}
+
 export function parseMedia(raw) {
   let u;
   try {

@@ -1,5 +1,5 @@
 /** Ilmoituksen (posterin) tarkistus ja siivous. Sama koodi Workerissa ja testeissä. */
-import { parseMedia } from './media.js';
+import { parseMedia, parseAudio } from './media.js';
 
 export const LIMITS = { title: 80, city: 60, tagline: 400, tag: 30, email: 120, note: 300, venue: 80, url: 300, media: 300, credit: 160 };
 export const MAX_TAGS = 6;
@@ -78,8 +78,10 @@ function parseDiscography(raw, errors) {
   for (const line of lines) {
     if (len(line) > LIMITS.media) { errors.media = `Jokainen linkki enintään ${LIMITS.media} merkkiä.`; return []; }
     const embed = parseMedia(line);
-    if (!embed) { errors.media = 'Tuettu on YouTube-, Spotify- tai SoundCloud-linkki, yksi per rivi.'; return []; }
-    out.push({ url: line, embed });
+    if (embed) { out.push({ url: line, embed }); continue; }
+    const audio = parseAudio(line);
+    if (!audio) { errors.media = 'Tuettu on YouTube-, Spotify- tai SoundCloud-linkki tai suora äänitiedosto (.mp3, .m4a, .ogg, .wav), yksi per rivi.'; return []; }
+    out.push({ url: line, audio });
   }
   return out;
 }
