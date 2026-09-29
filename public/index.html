@@ -96,7 +96,7 @@
         <span class="hint">Pilkulla eroteltuna.</span></label>
       <label class="field full" data-for="email"><span class="t">Yhteystieto (näkyy julkisesti)</span><input type="email" name="email" maxlength="120" autocomplete="off"></label>
       <label class="field full" data-for="media"><span class="t">Musiikki tai video</span><textarea name="media" placeholder="https://open.spotify.com/artist/…&#10;https://youtu.be/…"></textarea><span class="err">⚠ <span class="msg"></span></span>
-        <span class="hint">Yksi linkki per rivi, enintään 6: YouTube, Spotify, SoundCloud tai suora äänitiedosto (.mp3, .m4a, .ogg, .wav — esim. mp3tourl.com-linkki).</span></label>
+        <span class="hint">Yksi linkki per rivi, enintään 6: YouTube, Spotify, SoundCloud tai suora https-linkki äänitiedostoon (esim. mp3tourl.com).</span></label>
       <label class="field full" data-for="photo"><span class="t">Kuva</span><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><span class="err">⚠ <span class="msg"></span></span>
         <span class="hint">Pienennetään ja sijaintitiedot poistetaan selaimessa ennen lähetystä.</span>
         <img class="photo-preview" hidden alt=""></label>
@@ -170,7 +170,7 @@
         <span class="hint">Pilkulla eroteltuna.</span></label>
       <label class="field full" data-for="email"><span class="t">Yhteystieto (näkyy julkisesti)</span><input type="email" name="email" maxlength="120" autocomplete="off"></label>
       <label class="field full" data-for="media"><span class="t">Musiikki tai video</span><textarea name="media" placeholder="https://open.spotify.com/artist/…&#10;https://youtu.be/…"></textarea><span class="err">⚠ <span class="msg"></span></span>
-        <span class="hint">Yksi linkki per rivi, enintään 6: YouTube, Spotify, SoundCloud tai suora äänitiedosto (.mp3, .m4a, .ogg, .wav — esim. mp3tourl.com-linkki).</span></label>
+        <span class="hint">Yksi linkki per rivi, enintään 6: YouTube, Spotify, SoundCloud tai suora https-linkki äänitiedostoon (esim. mp3tourl.com).</span></label>
       <label class="field full" data-for="photo"><span class="t">Kuva</span><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><span class="err">⚠ <span class="msg"></span></span>
         <span class="hint">Jätä tyhjäksi jos et halua vaihtaa nykyistä kuvaa. Pienennetään ja sijaintitiedot poistetaan selaimessa.</span>
         <img class="photo-preview" hidden alt=""></label>
@@ -185,6 +185,10 @@
       </div>
       <p class="form-status" id="edit-form-status" role="status"></p>
     </form>
+    <div class="danger-zone">
+      <button class="btn danger small" type="button" id="edit-form-delete">Poista sivu</button>
+      <p class="hint">Poistaa koko sivun pysyvästi. Käyttää samaa koodia jonka annoit edellä.</p>
+    </div>
   </div>
 </dialog>
 
@@ -724,11 +728,54 @@ function openEditForm() {
   editForm.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
   document.getElementById('edit-form-status').textContent = '';
   document.getElementById('edit-form-status').className = 'form-status';
+  var deleteBtn = document.getElementById('edit-form-delete');
+  deleteBtn.disabled = false;
+  deleteBtn.textContent = 'Poista sivu';
+  delete deleteBtn.dataset.confirming;
   editFormDialog.showModal();
 }
 document.getElementById('edit-form-x').addEventListener('click', function () { editFormDialog.close(); });
 document.getElementById('edit-form-cancel').addEventListener('click', function () { editFormDialog.close(); });
 editFormDialog.addEventListener('click', function (e) { if (e.target === editFormDialog) editFormDialog.close(); });
+
+document.getElementById('edit-form-delete').addEventListener('click', function () {
+  var btn = this;
+  var status = document.getElementById('edit-form-status');
+  if (!btn.dataset.confirming) {
+    btn.dataset.confirming = '1';
+    btn.textContent = 'Varmista: poista pysyvästi?';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Poistetaan…';
+  status.textContent = '';
+  fetch(API_URL + '/posters/' + encodeURIComponent(currentPoster.id), { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: pendingEditCode }) })
+    .then(function (r) { return r.json().catch(function () { return {}; }).then(function (body) { return { status: r.status, body: body }; }); })
+    .then(function (res) {
+      if (res.status === 200) {
+        pendingEditCode = '';
+        editFormDialog.close();
+        navigate('');
+        loadIndex(true);
+      } else if (res.status === 403) {
+        editFormDialog.close();
+        openEditCodeDialog();
+        document.getElementById('edit-code-status').textContent = 'Väärä koodi. Yritä uudelleen.';
+        document.getElementById('edit-code-status').className = 'form-status err';
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Varmista: poista pysyvästi?';
+        status.textContent = 'Poisto epäonnistui. Yritä hetken päästä uudelleen.';
+        status.className = 'form-status err';
+      }
+    })
+    .catch(function () {
+      btn.disabled = false;
+      btn.textContent = 'Varmista: poista pysyvästi?';
+      status.textContent = 'Poisto epäonnistui. Tarkista verkkoyhteys.';
+      status.className = 'form-status err';
+    });
+});
 editForm.addEventListener('submit', async function (e) {
   e.preventDefault();
   var status = document.getElementById('edit-form-status');

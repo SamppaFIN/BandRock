@@ -33,11 +33,21 @@ function soundcloud(parts) {
 }
 
 // Suora äänitiedostolinkki (esim. mp3tourl.com, oma palvelin). Toisin kuin yllä olevat
-// palvelut tämä toistetaan <audio>-elementillä, ei iframella: ääni ei voi ajaa skriptejä,
-// ja selain hakee tiedoston vasta kun kuuntelija painaa toistoa (preload="none").
+// palvelut tämä toistetaan <audio>-elementillä, ei iframella: ääni ei voi ajaa skriptejä
+// eikä piirtää sivun sisältöä, vaikka osoite ei osoittaisikaan ääneen — soitin vain jää
+// hiljaiseksi. Selain hakee tiedoston vasta kun kuuntelija painaa toistoa (preload="none").
 // Palvelin ei koskaan itse hae osoitetta. Hylätään osoitteet jotka viittaisivat kävijän
 // omaan koneeseen tai lähiverkkoon (IP-osoitteet, localhost, ei-pisteellistä nimeä).
-const AUDIO_EXT = /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac)$/i;
+//
+// Monen ilmaisen äänipalvelun linkissä ei ole tiedostopäätettä (id-pohjainen polku,
+// esim. sndup.net/dl/abc123) — siksi päätettä ei vaadita. Vain selvästi muunlaista
+// sisältöä (sivu, ohjelma, asiakirja) tarkoittava pääte hylätään etukäteen.
+const NOT_AUDIO_EXT = /\.(html?|php|aspx?|jsp|pdf|docx?|zip|rar|7z|exe|dmg|apk|js|css)$/i;
+// Tunnettuja sivustoja joiden osoite on aina sivu eikä koskaan suora tiedosto (ei tiedostopäätettä
+// näytettäväksi, mutta ei silti audio). Bandcamp vaatii upotukseen numeerisen tunnisteen jota
+// linkistä ei voi päätellä (ks. parseMedia:n kommentti) — ilman tätä listaa sen albumisivu
+// hyväksyttäisiin vahingossa "ääneksi" pelkkänä http-osoitteena, koska siinä ei ole päätettä.
+const NOT_AUDIO_HOST = new Set(['bandcamp.com']);
 
 export function parseAudio(raw) {
   let u;
@@ -47,10 +57,11 @@ export function parseAudio(raw) {
     return null;
   }
   if (u.protocol !== 'https:' || u.username || u.password || u.port) return null;
-  const host = u.hostname.toLowerCase();
+  const host = u.hostname.toLowerCase().replace(/^www\./, '');
   if (!host.includes('.') || host.startsWith('[') || /^[\d.]+$/.test(host)) return null;
   if (/\.(local|localhost|internal|lan|home|test)$/.test(host)) return null;
-  if (!AUDIO_EXT.test(u.pathname)) return null;
+  if (NOT_AUDIO_EXT.test(u.pathname)) return null;
+  if (NOT_AUDIO_HOST.has(host) || [...NOT_AUDIO_HOST].some((h) => host.endsWith('.' + h))) return null;
   return u.href;
 }
 

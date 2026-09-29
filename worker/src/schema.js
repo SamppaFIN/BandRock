@@ -80,7 +80,7 @@ function parseDiscography(raw, errors) {
     const embed = parseMedia(line);
     if (embed) { out.push({ url: line, embed }); continue; }
     const audio = parseAudio(line);
-    if (!audio) { errors.media = 'Tuettu on YouTube-, Spotify- tai SoundCloud-linkki tai suora äänitiedosto (.mp3, .m4a, .ogg, .wav), yksi per rivi.'; return []; }
+    if (!audio) { errors.media = 'Tuettu on YouTube-, Spotify- tai SoundCloud-linkki tai suora https-linkki äänitiedostoon, yksi per rivi.'; return []; }
     out.push({ url: line, audio });
   }
   return out;

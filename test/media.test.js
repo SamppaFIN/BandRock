@@ -105,18 +105,35 @@ test('Ääni: suora https-tiedostolinkki hyväksytään, kyselyosa ja pääte-ki
   }
 });
 
-test('Ääni: ei-https, tunnukset, portti ja väärä pääte hylätään', () => {
+test('Ääni: ei-https, tunnukset, portti ja selvästi muu tiedostotyyppi hylätään', () => {
   for (const url of [
     'http://cdn.example.com/a.mp3',
     'https://user:pw@cdn.example.com/a.mp3',
     'https://cdn.example.com:8443/a.mp3',
     'https://cdn.example.com/a.mp3.exe',
     'https://cdn.example.com/a.html',
-    'https://cdn.example.com/audio',
+    'https://cdn.example.com/sivu.php',
+    'https://cdn.example.com/tiedosto.pdf',
     'javascript:alert(1).mp3',
     'ei linkki',
   ]) {
     assert.equal(parseAudio(url), null, url);
+  }
+});
+
+test('Ääni: bandcamp (aina sivu, ei koskaan suora tiedosto) hylätään vaikka päätettä ei ole', () => {
+  assert.equal(parseAudio('https://ray.bandcamp.com/album/madrid'), null);
+  assert.equal(parseAudio('https://bandcamp.com/x'), null);
+});
+
+test('Ääni: monen ilmaispalvelun linkissä ei ole tiedostopäätettä — hyväksytään silti', () => {
+  // esim. sndup.net/dl/<tunnus> tai pastewaves-tyyppinen id-pohjainen osoite ilman .mp3-päätettä
+  for (const url of [
+    'https://cdn.example.com/audio',
+    'https://sndup.net/dl/abc123',
+    'https://files.example.org/x/4f9a2b',
+  ]) {
+    assert.equal(parseAudio(url), url, url);
   }
 });
 

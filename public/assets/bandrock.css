@@ -205,6 +205,9 @@
     border-color: var(--hairline); box-shadow: inset 0 1px 0 color-mix(in srgb, white 14%, transparent);
   }
   .btn.ghost:hover { background: color-mix(in srgb, white 13%, transparent); filter: none; }
+  .btn.danger { color: #fff; background: var(--danger); border-color: color-mix(in srgb, var(--danger) 60%, white); }
+  .btn.danger:hover { filter: brightness(1.08); }
+  .danger-zone { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--hairline); }
 
   /* ── Keikkalista ──────────────────────────────────────────────────── */
   .gigs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
