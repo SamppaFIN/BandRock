@@ -239,12 +239,13 @@ export function draftPayload(d) {
 }
 
 // opts: { poster, mount, resizeImage(file) → Promise<{blob,width,height}>,
-//         onSave(draft, images) → Promise<null | {fields} | {message}>, onCancel(),
+//         onSave(draft, images, removed) → Promise<null | {fields} | {message}>, onCancel(),
 //         onDelete() → Promise<null | {message}>, onAddGig(), onEditGig(gig), onToggleGig(gig) }
 export function createEditor(opts) {
   var original = JSON.stringify(opts.poster);
   var draft = clone(opts.poster);
   var images = {};          // photo/logo: { blob, width, height, url } — ladataan vasta tallennuksessa
+  var removed = { photo: false, logo: false }; // poistetaanko tallennuksessa palvelimen kuva/logo
   var active = null;        // auki olevan muokkaimen alueen nimi
   var activeApply = null;   // kirjoittaa auki olevan muokkaimen arvot luonnokseen
   var errors = {};          // alueet, joissa palvelin löysi virheen
@@ -331,13 +332,27 @@ export function createEditor(opts) {
     return node;
   }
 
-  // Kuvan valinta: pienennys heti (sama funktio kuin lähetyksessä), esikatselu paikallaan.
-  function imagePicker(kind, labelText, previewImg, errEl) {
+  // Kuvan valinta ja poisto. Valinta: pienennys heti (sama funktio kuin lähetyksessä),
+  // esikatselu paikallaan. Poisto: kuva katoaa heti näkyvistä ja poistuu palvelimelta
+  // vasta Tallenna-napista (removed[kind]) — Peruuta palauttaa sen.
+  // texts: { change: 'Vaihda logo', add: 'Lisää logo', remove: 'Poista logo' }
+  function imagePicker(kind, texts, previewImg, errEl) {
+    var wrap = el('div', 'image-controls');
     var file = document.createElement('input');
     file.type = 'file';
     file.accept = 'image/jpeg,image/png,image/webp';
-    var label = el('label', 'file-label', labelText);
+    var hasImage = !previewImg.hidden;
+    var label = el('label', 'file-label', hasImage ? texts.change : texts.add);
     label.appendChild(file);
+    var rm = el('button', 'btn ghost small', '✕ ' + texts.remove);
+    rm.type = 'button';
+    rm.hidden = !hasImage;
+
+    function setHasImage(has) {
+      previewImg.hidden = !has;
+      rm.hidden = !has;
+      label.firstChild.textContent = has ? texts.change : texts.add;
+    }
     file.addEventListener('change', function () {
       var f = file.files[0];
       if (!f) return;
@@ -345,15 +360,26 @@ export function createEditor(opts) {
       opts.resizeImage(f).then(function (r) {
         if (images[kind]) URL.revokeObjectURL(images[kind].url);
         images[kind] = { blob: r.blob, width: r.width, height: r.height, url: URL.createObjectURL(r.blob) };
+        removed[kind] = false; // uusi kuva korvaa poiston
         previewImg.src = images[kind].url;
-        previewImg.hidden = false;
+        setHasImage(true);
       }).catch(function (err) {
         errEl.textContent = '⚠ ' + err.message;
         errEl.hidden = false;
         file.value = '';
       });
     });
-    return label;
+    rm.addEventListener('click', function () {
+      if (images[kind]) { URL.revokeObjectURL(images[kind].url); delete images[kind]; }
+      removed[kind] = true;
+      file.value = '';
+      previewImg.removeAttribute('src');
+      setHasImage(false);
+      label.focus();
+    });
+    wrap.appendChild(label);
+    wrap.appendChild(rm);
+    return wrap;
   }
 
   // Linkkilista (musiikki, some): rivit poistonapein + yksi lisäysrivi. Rivin ulkoasun
@@ -428,7 +454,7 @@ export function createEditor(opts) {
       if (logoSrc) logoImg.src = logoSrc; else logoImg.hidden = true;
       h1.appendChild(logoImg);
       node.appendChild(h1);
-      node.appendChild(imagePicker('logo', logoSrc ? 'Vaihda logo' : 'Lisää logo (valinnainen)', logoImg, fileErr));
+      node.appendChild(imagePicker('logo', { change: 'Vaihda logo', add: 'Lisää logo (valinnainen)', remove: 'Poista logo' }, logoImg, fileErr));
       node.appendChild(fileErr);
       var title = control('input', draft.title, { maxLength: 80, required: true, className: 'inline-edit hero-name-input' });
       title.dataset.autofocus = '';
@@ -444,6 +470,7 @@ export function createEditor(opts) {
         draft.title = clean(title.value);
         draft.city = clean(city.value);
         if (images.logo) draft.logo = { src: images.logo.url, width: images.logo.width, height: images.logo.height };
+        else if (removed.logo) delete draft.logo; // otsikoksi tulee nimi, kuten julkaistuna
       };
       return { node: frame(node), apply: apply };
     }
@@ -476,7 +503,7 @@ export function createEditor(opts) {
       if (psrc) pimg.src = psrc; else pimg.hidden = true;
       node.appendChild(pimg);
       var fields = el('div', 'photo-editor-fields');
-      fields.appendChild(imagePicker('photo', psrc ? 'Vaihda kuva' : 'Lisää bändikuva', pimg, fileErr));
+      fields.appendChild(imagePicker('photo', { change: 'Vaihda kuva', add: 'Lisää bändikuva', remove: 'Poista kuva' }, pimg, fileErr));
       fields.appendChild(fileErr);
       var credit = control('input', photo.credit, { maxLength: 160, placeholder: 'esim. Elmo Romppanen', className: 'inline-edit' });
       fields.appendChild(labeled('Kuvaaja', credit, '"Kuva: " lisätään eteen automaattisesti.'));
@@ -488,6 +515,7 @@ export function createEditor(opts) {
       apply = function () {
         var p = Object.assign({}, draft.photo || {}, { credit: clean(credit.value), members: parseMembers(mem.value) });
         if (images.photo) { p.src = images.photo.url; p.width = images.photo.width; p.height = images.photo.height; }
+        else if (removed.photo) p = { members: p.members }; // kuvaaja kuului kuvaan (sama kuin palvelimella)
         draft.photo = p;
       };
       return { node: frame(node), apply: apply };
@@ -627,7 +655,7 @@ export function createEditor(opts) {
   }
 
   function dirty() {
-    return Boolean(images.photo || images.logo) || JSON.stringify(draft) !== original;
+    return Boolean(images.photo || images.logo || removed.photo || removed.logo) || JSON.stringify(draft) !== original;
   }
 
   function cancel() {
@@ -640,7 +668,7 @@ export function createEditor(opts) {
     close(false);
     setStatus('Tallennetaan…');
     saveBtn.disabled = true;
-    return Promise.resolve(opts.onSave(draft, images)).then(function (res) {
+    return Promise.resolve(opts.onSave(draft, images, removed)).then(function (res) {
       saveBtn.disabled = false;
       if (!res) return;
       if (res.fields) {

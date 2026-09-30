@@ -286,6 +286,10 @@
   .svc-btn[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
   .quick-add.svc-form { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px; border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent); border-radius: 10px; }
   .svc-form-title { margin: 0; display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .image-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+  .field.check-row { flex-direction: row; align-items: center; gap: 10px; min-height: var(--tap); cursor: pointer; }
+  .field.check-row input { width: 22px; height: 22px; accent-color: var(--gold); }
+  .photo-preview.to-remove { opacity: 0.3; outline: 2px dashed var(--danger); }
   .quick-add { display: flex; gap: 8px; margin-top: 14px; }
   .quick-add input { flex: 1; min-width: 0; }
   @media (max-width: 520px) { .quick-add { flex-direction: column; } }

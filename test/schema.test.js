@@ -167,6 +167,13 @@ test('validatePatch: somelinkin oma selite (muu linkki) säilyy, ilman selitett�
   assert.deepEqual(fields(validatePatch, { title: 'X', social: 'Kotisivut ilman linkkiä' }), ['social']);
 });
 
+test('validatePatch: kuvan ja logon poistoliput vain tarkalla true-arvolla', () => {
+  assert.equal(validatePatch({ title: 'X', removePhoto: true, removeLogo: true }).value.removePhoto, true);
+  assert.equal(validatePatch({ title: 'X', removePhoto: true, removeLogo: true }).value.removeLogo, true);
+  assert.equal(validatePatch({ title: 'X', removePhoto: 'true' }).value.removePhoto, false);
+  assert.equal(validatePatch({ title: 'X' }).value.removeLogo, false);
+});
+
 test('validatePatch: bio/jäsenet/some rajat ja virheet', () => {
   const manyBio = Array.from({ length: 10 }, (_, i) => 'kappale ' + i).join('\n');
   assert.equal(validatePatch({ title: 'X', bio: manyBio }).value.bio.length, MAX_BIO);

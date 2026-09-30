@@ -201,6 +201,9 @@ export function validatePatch(input) {
   const src = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
   const fields = commonFields(src, errors, { titleRequired: true });
   if (Object.keys(errors).length) return { ok: false, errors };
+  // Kuvan/logon poisto (muokkaimen "Poista kuva") — vain tarkka true, ei mikä tahansa totuusarvo.
+  fields.removePhoto = src.removePhoto === true;
+  fields.removeLogo = src.removeLogo === true;
   return { ok: true, value: fields };
 }
 

@@ -250,9 +250,29 @@ async function patchPoster(request, env, id, cors) {
       : poster.photo,
     updated: Date.now(),
   };
+
+  // Kuvan/logon poisto. Tiedosto poistetaan R2:sta vain jos se on tämän ilmoituksen oma
+  // ladattu kuva (img/<id>/…) — Ray Jonen sivuston oma img/band.jpg ei ole R2:ssa.
+  if (result.value.removeLogo && poster.logo) {
+    await deleteOwnImage(env, id, poster.logo.src);
+    delete updated.logo;
+  }
+  if (result.value.removePhoto && poster.photo && poster.photo.src) {
+    await deleteOwnImage(env, id, poster.photo.src);
+    // Jäsenet jäävät (näkyvät omana osionaan ilman kuvaa); kuvaaja kuului kuvaan.
+    const members = (updated.photo && updated.photo.members) || [];
+    if (members.length) updated.photo = { members };
+    else delete updated.photo;
+  }
+
   await env.BUCKET.put(`posters/${id}.json`, JSON.stringify(updated), { customMetadata: customMetaFor(updated) });
   await purgeListCache();
   return json({ ok: true }, 200, cors);
+}
+
+async function deleteOwnImage(env, id, src) {
+  const key = photoKeyOf(src);
+  if (key && key.startsWith(`img/${id}/`)) await env.BUCKET.delete(key).catch(() => {});
 }
 
 async function deletePoster(request, env, id, cors) {
@@ -374,6 +394,10 @@ async function editGig(request, env, id, gigId, cors) {
       width: Math.round(Number(form.get('width'))) || null,
       height: Math.round(Number(form.get('height'))) || null,
     };
+  } else if (input && (input.removePhoto === '1' || input.removePhoto === true) && existing.photo) {
+    // "Poista nykyinen kuva" keikan muokkauksessa (uusi kuva ohittaa poiston).
+    await deleteOwnImage(env, id, existing.photo.src);
+    delete gig.photo;
   }
 
   const gigs = [...poster.gigs];

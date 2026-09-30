@@ -122,7 +122,7 @@ Tiketit 1–12 koskevat vanhaa yhden-bändin sivua (osa on yhä ajan tasalla, os
     { "id": "keikat",   "nimi": "🎤 Keikkailmoitukset (D1, korvautuu vaiheessa 2)", "tiketit": [5, 6, 7], "valmius": 98 },
     { "id": "suojaus",  "nimi": "🛡️ Suojaus ja piilotus (D1-versio)", "tiketit": [8, 9], "valmius": 35 },
     { "id": "julkaisu", "nimi": "🚀 Julkaisu",               "tiketit": [10, 11, 12], "valmius": 83 },
-    { "id": "bandrock", "nimi": "⚡ BandRock-alusta",         "tiketit": [13, 14, 15, 16, 17, 18, 19, 20, 21, 22], "valmius": 98 }
+    { "id": "bandrock", "nimi": "⚡ BandRock-alusta",         "tiketit": [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23], "valmius": 98 }
   ],
   "tiketit": [
     { "id": 1, "epic": "sivu", "nimi": "Portaa sivu tavalliseksi HTML:ksi", "effort": "S", "riippuvuudet": [], "status": "done",
@@ -198,6 +198,14 @@ Tiketit 1–12 koskevat vanhaa yhden-bändin sivua (osa on yhä ajan tasalla, os
         "Palvelin: somerivi 'Selite https://…' (parseSocial), selite ≤ 60 merkkiä, ilman selitettä nimi tunnistetaan kuten ennen; Ray Jonen vanhat linkkinimet säilyvät tallennuksen yli",
         "Enter lisää linkin, Esc sulkee vain lisäyksen (ei koko muokkainta), enintään 6 linkkiä",
         "26 selaintarkistusta + 1 uusi yksikkötesti läpi, axe-core puhtaana lisäyslomake auki, 390 px ilman vaakavieritystä; aiemmat 52 + savutesti yhä läpi"
+      ], "valmius": 100 },
+    { "id": 23, "epic": "bandrock", "nimi": "Kuvan, logon ja keikan kuvan poisto + info-ikkunan esimerkkikortti korjattu", "effort": "S", "riippuvuudet": [21], "status": "done",
+      "acceptance_criteria": [
+        "Kuva- ja logomuokkaimessa '✕ Poista kuva' / '✕ Poista logo' (näkyy vain kun kuva on). Poisto näkyy heti, tallentuu vasta Tallennasta; Peruuta palauttaa; uuden kuvan valinta ohittaa poiston",
+        "PATCH removePhoto/removeLogo (vain tarkka true). Palvelin poistaa tiedoston R2:sta vain jos se on ilmoituksen oma img/<id>/… (Ray Jonen sivuston img/band.jpg jää koskematta). Kuvan poistossa jäsenet jäävät (omana osionaan), kuvaaja lähtee kuvan mukana; logon poistossa otsikoksi palaa nimi",
+        "Keikan muokkauksessa nykyinen kuva näkyy esikatseluna + 'Poista nykyinen kuva' -valinta (himmentää esikatselun); editGig removePhoto='1' poistaa kuvan ja tiedoston",
+        "Korjattu: 'Mikä on BandRock?' -ikkunan esimerkkikortti ('Esimerkkiä ei saatu ladattua') — loadIndex palauttaa tiketistä 20 lähtien {posters, gigs}, tämä kutsupaikka käytti vielä vanhaa listamuotoa. Lisätty savutestiin pysyvästi",
+        "31 selaintarkistusta + 1 yksikkötesti läpi, aiemmat testit (52 + 26 + savutesti) yhä läpi, axe-core puhtaana"
       ], "valmius": 100 }
   ]
 }
@@ -403,6 +411,7 @@ Jokainen vastaus alkaa lyhyellä otsikolla. Se on tehty luettavaksi nopeasti.
 - **UI:n uuden osion lisääminen (esim. muokkausnäkymä) ei automaattisesti peri sivun MUUALLA rakennettua liitäntälogiikkaa.** "+ Lisää keikka" -nappi kiinnitettiin alunperin vain `showDetail()`:n sisällä (`wrap.querySelector('#keikat .head')`), koska ainoa muokkausreitti oli silloin modaali-ikkuna eikä koskenut Keikat-osion rakenteeseen. Kun WYSIWYG-muokkaus (tiketti 19) alkoi piirtää oman `#keikat`-osionsa `enterEditMode()`:ssa, nappi puuttui sieltä kokonaan eikä kukaan huomannut ennen kuin testattiin oikeasti 0 keikan bändillä. Kun kaksi eri funktiota piirtävät rakenteellisesti saman osion, tarkista aina että KAIKKI siihen kiinnittyvä liitäntäkoodi on lisätty jokaiseen piirtopaikkaan, ei vain ensimmäiseen.
 - **Lomake joka näyttää vain osan tallennettavasta datasta ja lähettää sen kokonaan, pyyhkii loput.** Ray Jonen julkaisuilla oli vain `embed` (ei `url`), muokkain esitäytti linkkikentän `url`eista → tyhjä → Tallenna olisi poistanut julkaisut. Kun lomake korvaa kokonaisen listan, tarkista että JOKAINEN olemassa oleva alkio pystyy kulkemaan lomakkeen läpi takaisin (tässä `urlFromEmbed`) ja että palvelin säilyttää lomakkeelle näkymättömät kentät (nimi, kansikuva) yhdistämällä vanhaan.
 - `.pad` on pystysuuntainen flex (`flex-direction: column`). Kun sen päälle rakennetaan vaakarivi (esim. `.edit-bar`), `flex-direction: row` pitää asettaa itse — muuten lapsen `flex: 1 1 260px` tarkoittaa 260 px **korkeutta** (sama oppi kuin aiemmin `flex-basis`ista). Löytyi vain kuvakaappauksesta.
+- **Kun funktion palautusmuoto muuttuu, käy läpi KAIKKI kutsupaikat samassa muutoksessa** (`grep` funktion nimellä). `loadIndex()` muuttui listasta `{posters, gigs}`-olioksi tiketissä 20; ruudukko päivitettiin, mutta info-ikkunan kutsupaikka jäi — virhe jäi `try/catch`in taakse ("Esimerkkiä ei saatu ladattua") eikä näkynyt yhdessäkään testissä, koska mikään testi ei avannut info-ikkunaa. Huomasin kutsupaikan jopa lukiessani koodia, mutta jätin korjaamatta. Hiljaisesti virheen nielevä `catch` + testaamaton reitti = näkymätön regressio.
 - Scratchpadin testiapuvälineet (esim. `gh-pages-sim.mjs`) voivat kadota istuntojen välillä. Jos Pages-simulaattori ei vastaa (curl → 000), tarkista sen loki ennen kuin epäilet sivun koodia — selaintesti näytti "nappia ei löydy", vaikka vika oli puuttuvassa palvelimessa. Tarkista valmiussilmukassa kaikki kolme palvelinta (8799, 8081, 9333), ei vain kahta.
 - Kun lomakkeessa on piilotettu kenttä ennen näkyvää samaa tyyppiä (`input[type=text]`), `querySelector` osuu piilotettuun. Testeissä kohdista näkyvään kenttään rakenteen kautta, älä pelkällä tyypillä.
 - PowerShell-työkalun turvasuodatin tulkitsi `taskkill /PID …` samassa komennossa `Remove-Item`in kanssa poistopoluksi ja esti koko komennon. Pidä prosessien pysäytys (`Stop-Process`) ja tiedostopoistot eri kutsuissa.

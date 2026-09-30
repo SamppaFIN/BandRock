@@ -173,6 +173,7 @@
       <label class="field full" data-for="photo"><span class="t">Kuva</span><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><span class="err">⚠ <span class="msg"></span></span>
         <span class="hint">Esim. keikkajuliste. Pienennetään ja sijaintitiedot poistetaan selaimessa ennen lähetystä.</span>
         <img class="photo-preview" hidden alt=""></label>
+      <label class="field full check-row" data-for="removePhoto" hidden><input type="checkbox" name="removePhoto" value="1"> Poista nykyinen kuva</label>
       <label class="field full" data-for="code"><span class="t">Sivun 5-merkkinen koodi *</span><input type="text" name="code" required maxlength="5" autocomplete="off" autocapitalize="characters"><span class="err">⚠ <span class="msg"></span></span></label>
       <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
       <div class="actions">
@@ -468,8 +469,7 @@ document.getElementById('info-open').addEventListener('click', async function ()
   var preview = document.getElementById('info-preview');
   preview.replaceChildren(el('p', 'muted', 'Ladataan…'));
   try {
-    var items = await loadIndex();
-    var ray = items.find(function (p) { return p.id === 'ray-jone'; });
+    var ray = (await loadIndex()).posters.find(function (p) { return p.id === 'ray-jone'; });
     if (ray) {
       var card = renderCard(ray);
       card.addEventListener('click', function () { infoDialog.close(); navigate('ray-jone'); });
@@ -755,10 +755,13 @@ function enterEditMode() {
   focusMain();
 }
 
-async function saveDraft(draft, images) {
+async function saveDraft(draft, images, removed) {
   if (!API_CONFIGURED) return { message: 'Tallennus ei ole vielä käytössä — tulossa pian.' };
   var data = draftPayload(draft);
   data.code = pendingEditCode;
+  // Palvelin poistaa kuvan/logon (ja sen tiedoston) vasta tästä — uusi kuva ladataan perään.
+  data.removePhoto = Boolean(removed && removed.photo && !images.photo);
+  data.removeLogo = Boolean(removed && removed.logo && !images.logo);
   var id = encodeURIComponent(currentPoster.id);
   var res;
   try {
@@ -849,6 +852,8 @@ var gigOnSuccess = null;
 function openGigDialog(gig, onSuccess) {
   gigForm.reset();
   gigForm.querySelector('.photo-preview').hidden = true;
+  gigForm.querySelector('.photo-preview').classList.remove('to-remove');
+  gigForm.querySelector('[data-for="removePhoto"]').hidden = true;
   gigForm.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
   document.getElementById('gig-form-status').textContent = '';
   document.getElementById('gig-form-status').className = 'form-status';
@@ -865,6 +870,14 @@ function openGigDialog(gig, onSuccess) {
     gigForm.elements.note.value = gig.note || '';
     gigForm.elements.url.value = gig.url || '';
     gigForm.dataset.editingId = gig.id;
+    // Nykyinen kuva näkyy esikatseluna, ja sen voi poistaa (uusi valittu kuva korvaa sen).
+    if (gig.photo && gig.photo.src) {
+      var gp = gigForm.querySelector('.photo-preview');
+      gp.src = gig.photo.src;
+      gp.alt = 'Nykyinen kuva';
+      gp.hidden = false;
+      gigForm.querySelector('[data-for="removePhoto"]').hidden = false;
+    }
   } else {
     document.getElementById('gig-dlg-title').textContent = 'Lisää keikka · Add a gig';
     document.getElementById('gig-submit').textContent = 'Lisää keikka';
@@ -886,6 +899,16 @@ function markGigField(name, msg) {
 }
 
 wireImagePreview(gigForm, 'photo', 'photo-preview');
+// "Poista nykyinen kuva": esikatselu himmenee merkiksi. Uuden kuvan valinta korvaa poiston.
+gigForm.elements.removePhoto.addEventListener('change', function () {
+  gigForm.querySelector('.photo-preview').classList.toggle('to-remove', this.checked);
+});
+gigForm.elements.photo.addEventListener('change', function () {
+  if (!this.files[0]) return;
+  gigForm.elements.removePhoto.checked = false;
+  gigForm.querySelector('.photo-preview').classList.remove('to-remove');
+  gigForm.querySelector('[data-for="removePhoto"]').hidden = true;
+});
 
 gigForm.addEventListener('submit', async function (e) {
   e.preventDefault();
