@@ -213,10 +213,10 @@
   /* Läpinäkyvä kunnes hiiren alla tai fokuksessa — näyttää tekstiltä, paljastuu kentäksi. */
   .inline-edit {
     font: inherit; color: inherit; text-align: inherit; letter-spacing: inherit; text-transform: inherit;
-    background: transparent; border: 1px dashed color-mix(in srgb, var(--text-faint) 35%, transparent); border-radius: 8px;
+    background: color-mix(in srgb, white 3%, transparent); border: 1px dashed color-mix(in srgb, var(--text-faint) 45%, transparent); border-radius: 8px;
     padding: 3px 8px; width: 100%; resize: vertical; min-height: var(--tap);
   }
-  .inline-edit:hover { border-color: color-mix(in srgb, var(--gold) 45%, transparent); }
+  .inline-edit:hover { border-color: color-mix(in srgb, var(--gold) 45%, transparent); background: color-mix(in srgb, white 6%, transparent); }
   .inline-edit:focus { outline: none; border-color: var(--gold); background: color-mix(in srgb, black 35%, transparent); }
   .inline-edit.bad-inline { border-color: var(--danger); border-style: solid; }
   input[type="file"].bad-inline { outline: 2px solid var(--danger); border-radius: 6px; }
@@ -244,6 +244,9 @@
   .file-label input[type="file"] { font: inherit; font-size: 13px; max-width: 220px; }
   .logo-preview-inline { width: clamp(180px, 50vw, 360px); height: auto; mix-blend-mode: screen; }
   .photo-preview-inline { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: calc(var(--r) - 7px); }
+  .bio-input { font-size: clamp(16px, 2vw, 18px); line-height: 1.6; min-height: 6em; }
+  .quick-add { display: flex; gap: 8px; margin-top: 8px; }
+  .quick-add input { flex: 1; }
   @media (prefers-reduced-motion: no-preference) {
     .inline-edit { transition: border-color var(--step) var(--ease), background var(--step) var(--ease); }
   }
@@ -293,6 +296,9 @@
   .gig-play { grid-column: 2 / -1; margin-top: 10px; }
   .gig-player { grid-column: 1 / -1; margin-top: 12px; border-radius: 10px; overflow: hidden; background: #000; border: 1px solid var(--hairline); }
   .gig-player iframe { width: 100%; height: 100%; border: 0; }
+  .gig-actions { grid-column: 1 / -1; display: flex; gap: 10px; margin-top: 8px; }
+  .gig.gig-hidden { opacity: 0.5; border-style: dashed; }
+  .gig-card { border-left: 3px solid var(--gold); }
   .play {
     font: inherit; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase;
     min-height: var(--tap); padding: 0 16px;

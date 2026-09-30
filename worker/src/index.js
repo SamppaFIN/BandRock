@@ -1,12 +1,15 @@
 /**
  * BandRockin Worker: ilmoitukset (posterit) R2:ssa, ei tietokantaa.
  *
- *   GET    /api/posters              kevyt lista (vain näkyvät), ruudukkoa varten
+ *   GET    /api/posters              kevyt lista (vain näkyvät bändit) + kaikkien bändien tulevat
+ *                                     keikat yhtenä listana ruudukkoa varten
  *   GET    /api/posters/:id          täysi ilmoitus (codeHash ei koskaan mukana)
  *   POST   /api/posters              uusi ilmoitus; palauttaa koodin KERRAN
- *   PATCH  /api/posters/:id          muokkaus koodilla (vain lomakkeen kentät, muu sisältö säilyy)
+ *   PATCH  /api/posters/:id          muokkaus koodilla (nimi/kaupunki/kuvaus/tyylilajit/some/media/bio/jäsenet)
  *   DELETE /api/posters/:id          poisto koodilla
  *   POST   /api/posters/:id/gigs     yhden keikan lisäys koodilla (JSON, tai multipart jos keikalla on kuva)
+ *   PATCH  /api/posters/:id/gigs/:gigId        keikan muokkaus koodilla (esim. typo, menneenkin keikan)
+ *   POST   /api/posters/:id/gigs/:gigId/status keikan näkyvyys koodilla (visible/hidden — piilotettu katoaa myös etusivulta)
  *   POST   /api/posters/:id/photo    bändin kuvan lataus koodilla (multipart/form-data, voi sisältää credit-kentän)
  *   POST   /api/posters/:id/logo     bändin logon lataus koodilla (sama muoto, ei kuvatekstiä)
  *   POST   /api/posters/:id/report   "ilmoita asiaton" — anonyymi, ei koodia, nostaa laskuria
@@ -19,7 +22,7 @@
  * Ilmoittajasta ei tallenneta mitään pysyvästi. IP:tä käytetään vain ohimenevästi
  * nopeusrajoittimen avaimena (Cloudflaren oma rajoitinpalvelu), ei kirjoiteta R2:een.
  */
-import { validateCreate, validatePatch, validateGigEntry, sanitizeText, LIMITS } from './schema.js';
+import { validateCreate, validatePatch, validateGigEntry, sanitizeText, todayHelsinki, GIG_STATUSES, LIMITS } from './schema.js';
 import { generateCode, hashCode, verifyCode, verifyAdmin, isMasterCode, slugify } from './code.js';
 import { detectImageType, MAX_IMAGE_BYTES } from './image.js';
 
@@ -60,41 +63,53 @@ async function rateLimited(env, key) {
   }
 }
 
+// Vanhoilla keikoilla (ennen tätä ominaisuutta tallennetuilla) ei ole id/status-kenttää —
+// täydennetään lennossa. Kun ilmoitus tallennetaan seuraavan kerran mistä tahansa reitistä
+// (poster.gigs kulkee aina täydellä {...poster}-hajotuksella), täydennetyt arvot jäävät pysyviksi.
+function normalizeGigs(gigs) {
+  return (gigs || []).map((g, i) => ({ ...g, id: g.id || `legacy-${i}`, status: g.status || 'visible' }));
+}
+
 async function listPosters(env, cors) {
   const cache = caches.default;
   const cacheKey = new Request('https://bandrock.internal/api/posters');
   const cached = await cache.match(cacheKey);
   if (cached) return new Response(cached.body, { headers: { ...Object.fromEntries(cached.headers), ...cors } });
 
-  const out = [];
+  const posters = [];
+  const gigs = [];
+  const today = todayHelsinki();
   let cursor;
   do {
+    // Keikkojen poimintaa varten tarvitaan aina koko sisältö, ei pelkkää customMetadataa —
+    // customMetadataa käytetään silti piilotettujen esikarsintaan (säästää lukuja).
     const page = await env.BUCKET.list({ prefix: 'posters/', cursor, include: ['customMetadata'] });
     for (const obj of page.objects) {
-      let m = obj.customMetadata || {};
-      // Tavallisesti customMetadata riittää (POST/PATCH-reitit asettavat sen aina).
-      // Jos joku ilmoitus on kirjoitettu R2:een muuta kautta (esim. `wrangler r2 object
-      // put`, joka ei osaa asettaa customMetadataa), luetaan tiedot silloin itse tiedostosta.
-      if (!m.title) {
-        try {
-          const body = await env.BUCKET.get(obj.key);
-          if (body) m = await body.json();
-        } catch { /* jätetään ohi, jos tiedosto ei ole kelvollista JSON:ia */ }
-      }
-      if (m.status === 'hidden') continue;
-      out.push({
-        id: m.id || obj.key.slice('posters/'.length, -'.json'.length),
-        type: m.type || 'bandi',
-        title: m.title || '',
-        city: m.city || '',
-        tagline: m.tagline || '',
-        tags: Array.isArray(m.tags) ? m.tags : (typeof m.tags === 'string' ? m.tags.split('|').filter(Boolean) : []),
+      if (obj.customMetadata && obj.customMetadata.status === 'hidden') continue;
+      let p;
+      try {
+        const body = await env.BUCKET.get(obj.key);
+        if (!body) continue;
+        p = await body.json();
+      } catch { continue; }
+      if (p.status === 'hidden') continue;
+      posters.push({
+        id: p.id, type: p.type || 'bandi', title: p.title || '', city: p.city || '',
+        tagline: p.tagline || '', tags: p.tags || [],
       });
+      for (const g of normalizeGigs(p.gigs)) {
+        if (g.status === 'hidden' || g.date < today) continue;
+        gigs.push({
+          id: g.id, posterId: p.id, posterTitle: p.title,
+          date: g.date, time: g.time || null, venue: g.venue, city: g.city || p.city || '', note: g.note || null,
+        });
+      }
     }
     cursor = page.truncated ? page.cursor : undefined;
   } while (cursor);
+  gigs.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
-  const res = json({ posters: out }, 200, { 'cache-control': `public, max-age=${LIST_CACHE_SECONDS}` });
+  const res = json({ posters, gigs }, 200, { 'cache-control': `public, max-age=${LIST_CACHE_SECONDS}` });
   await cache.put(cacheKey, res.clone());
   return new Response(res.body, { headers: { ...Object.fromEntries(res.headers), ...cors } });
 }
@@ -104,6 +119,9 @@ async function getPoster(env, id, cors) {
   if (!obj) return json({ error: 'not_found' }, 404, cors);
   const poster = await obj.json();
   if (poster.status === 'hidden') return json({ error: 'not_found' }, 404, cors);
+  // Piilotetut keikat kulkevat silti mukana (status: 'hidden') — muokkausnäkymä tarvitsee
+  // ne näyttääkseen "Näytä"-napin. Lukunäkymä (render.js) suodattaa ne itse pois.
+  poster.gigs = normalizeGigs(poster.gigs);
   return json(publicView(poster), 200, { ...cors, 'cache-control': 'no-store' });
 }
 
@@ -187,6 +205,7 @@ async function loadForEdit(env, id, code, purpose = 'edit') {
   const obj = await env.BUCKET.get(`posters/${id}.json`);
   if (!obj) return { error: json({ error: 'not_found' }, 404) };
   const poster = await obj.json();
+  poster.gigs = normalizeGigs(poster.gigs);
   const ok = isMasterCode(code, purpose) || (await verifyCode(code, poster.codeHash, env.CODE_SECRET));
   if (!ok) return { error: json({ error: 'forbidden' }, 403) };
   return { poster };
@@ -204,14 +223,24 @@ async function patchPoster(request, env, id, cors) {
   const result = validatePatch(input);
   if (!result.ok) return json({ error: 'invalid', fields: result.errors }, 400, cors);
 
+  // Puhelin ei ole minkään lomakkeen kautta muokattavissa (vain Ray Jonen valmiissa
+  // siemendatassa) — säilytetään aina, jos se on ollut olemassa.
+  const phone = poster.contact && poster.contact.phone;
+  const hasContact = Boolean(phone || result.value.email || result.value.social.length);
   const updated = {
     ...poster,
     title: result.value.title,
     city: result.value.city,
     tagline: result.value.tagline,
     tags: result.value.tags,
-    contact: result.value.email ? { email: result.value.email } : poster.contact,
+    contact: hasContact
+      ? { phone, phoneDisplay: poster.contact && poster.contact.phoneDisplay, email: result.value.email, social: result.value.social }
+      : null,
     discography: result.value.discography,
+    bio: result.value.bio,
+    // Jäsenet ovat osa photo-oliota (kuuluvat kuvatekstiin) — kuvan omat kentät (src/width/
+    // height/credit) säilyvät koskemattomina, ne muokataan vain /photo-reitin kautta.
+    photo: (poster.photo || result.value.members.length) ? { ...(poster.photo || {}), members: result.value.members } : poster.photo,
     updated: Date.now(),
   };
   await env.BUCKET.put(`posters/${id}.json`, JSON.stringify(updated), { customMetadata: customMetaFor(updated) });
@@ -270,7 +299,7 @@ async function addGig(request, env, id, cors) {
   const result = validateGigEntry(input);
   if (!result.ok) return json({ error: 'invalid', fields: result.errors }, 400, cors);
 
-  const gig = { ...result.value };
+  const gig = { id: newGigId(), status: 'visible', ...result.value };
   const file = form && form.get('photo');
   if (file) {
     const img = await readImage(file);
@@ -286,7 +315,91 @@ async function addGig(request, env, id, cors) {
 
   const updated = { ...poster, gigs: [...(poster.gigs || []), gig], updated: Date.now() };
   await env.BUCKET.put(`posters/${id}.json`, JSON.stringify(updated), { customMetadata: customMetaFor(updated) });
-  return json({ ok: true }, 201, cors);
+  await purgeListCache(); // keikka voi näkyä etusivun irrallisena listana
+  return json({ ok: true, gigId: gig.id }, 201, cors);
+}
+
+function newGigId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+// Olemassa olevan keikan muokkaus (esim. typo korjattavaksi). Sallii menneen päivämäärän —
+// historiaakin pitää voida korjata. Sama JSON/multipart-kaksijako kuin lisäyksessä.
+async function editGig(request, env, id, gigId, cors) {
+  let input, form = null;
+  if ((request.headers.get('content-type') || '').startsWith('multipart/form-data')) {
+    try {
+      form = await request.formData();
+    } catch {
+      return json({ error: 'bad_form' }, 400, cors);
+    }
+    input = {};
+    for (const [k, v] of form.entries()) if (typeof v === 'string') input[k] = v;
+  } else {
+    const { value, error } = await readBody(request);
+    if (error) return json(await error.json(), error.status, cors);
+    input = value;
+  }
+
+  if (await rateLimited(env, `edit:${id}`)) return json({ error: 'busy' }, 429, cors);
+
+  const { poster, error: authError } = await loadForEdit(env, id, String((input && input.code) || ''));
+  if (authError) return json(await authError.json(), authError.status, cors);
+
+  const idx = poster.gigs.findIndex((g) => g.id === gigId);
+  if (idx === -1) return json({ error: 'not_found' }, 404, cors);
+  const existing = poster.gigs[idx];
+
+  const result = validateGigEntry(input, todayHelsinki(), { allowPast: true });
+  if (!result.ok) return json({ error: 'invalid', fields: result.errors }, 400, cors);
+
+  const gig = { ...existing, ...result.value };
+  const file = form && form.get('photo');
+  if (file) {
+    const img = await readImage(file);
+    if (img.fieldError) return json({ error: 'invalid', fields: { photo: img.fieldError } }, 400, cors);
+    const oldKey = photoKeyOf(existing.photo && existing.photo.src);
+    if (oldKey && oldKey.startsWith(`img/${id}/`)) await env.BUCKET.delete(oldKey).catch(() => {});
+    const key = `img/${id}/${Date.now()}-gig.${img.detected.ext}`;
+    await env.BUCKET.put(key, img.bytes, { httpMetadata: { contentType: img.detected.type } });
+    gig.photo = {
+      src: `${new URL(request.url).origin}/${key}`,
+      width: Math.round(Number(form.get('width'))) || null,
+      height: Math.round(Number(form.get('height'))) || null,
+    };
+  }
+
+  const gigs = [...poster.gigs];
+  gigs[idx] = gig;
+  const updated = { ...poster, gigs, updated: Date.now() };
+  await env.BUCKET.put(`posters/${id}.json`, JSON.stringify(updated), { customMetadata: customMetaFor(updated) });
+  await purgeListCache();
+  return json({ ok: true }, 200, cors);
+}
+
+// Keikan näkyvyys (visible/hidden) — piilotettu keikka katoaa sekä bändin omalta sivulta
+// että etusivun keikkalistalta, kuten piilotettu ilmoituskin, mutta bändin sivu itse pysyy.
+async function setGigStatus(request, env, id, gigId, cors) {
+  const { value: input, error } = await readBody(request);
+  if (error) return json(await error.json(), error.status, cors);
+
+  if (await rateLimited(env, `edit:${id}`)) return json({ error: 'busy' }, 429, cors);
+
+  const { poster, error: authError } = await loadForEdit(env, id, String((input && input.code) || ''));
+  if (authError) return json(await authError.json(), authError.status, cors);
+
+  const status = input && input.status;
+  if (!GIG_STATUSES.has(status)) return json({ error: 'invalid', fields: { status: 'visible tai hidden.' } }, 400, cors);
+
+  const idx = poster.gigs.findIndex((g) => g.id === gigId);
+  if (idx === -1) return json({ error: 'not_found' }, 404, cors);
+
+  const gigs = [...poster.gigs];
+  gigs[idx] = { ...gigs[idx], status };
+  const updated = { ...poster, gigs, updated: Date.now() };
+  await env.BUCKET.put(`posters/${id}.json`, JSON.stringify(updated), { customMetadata: customMetaFor(updated) });
+  await purgeListCache();
+  return json({ ok: true }, 200, cors);
 }
 
 // Poimii R2-avaimen kuvan src-kentästä. src on tavallisesti täysi osoite
@@ -547,6 +660,14 @@ export default {
       } else if (parts.length === 4 && parts[3] === 'gigs') {
         const id = decodeURIComponent(parts[2]);
         if (request.method === 'POST') return await addGig(request, env, id, cors);
+      } else if (parts.length === 5 && parts[3] === 'gigs') {
+        const id = decodeURIComponent(parts[2]);
+        const gigIdParam = decodeURIComponent(parts[4]);
+        if (request.method === 'PATCH') return await editGig(request, env, id, gigIdParam, cors);
+      } else if (parts.length === 6 && parts[3] === 'gigs' && parts[5] === 'status') {
+        const id = decodeURIComponent(parts[2]);
+        const gigIdParam = decodeURIComponent(parts[4]);
+        if (request.method === 'POST') return await setGigStatus(request, env, id, gigIdParam, cors);
       } else if (parts.length === 4 && (parts[3] === 'photo' || parts[3] === 'logo')) {
         const id = decodeURIComponent(parts[2]);
         if (request.method === 'POST') return await uploadImage(request, env, id, parts[3], cors);

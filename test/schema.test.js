@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateCreate, validatePatch, validateGigEntry, sanitizeText, todayHelsinki, LIMITS, MAX_TAGS } from '../worker/src/schema.js';
+import { validateCreate, validatePatch, validateGigEntry, sanitizeText, todayHelsinki, LIMITS, MAX_TAGS, MAX_BIO, MAX_MEMBERS, MAX_SOCIAL } from '../worker/src/schema.js';
 
 const TODAY = '2026-09-21';
 const goodCreate = { type: 'bandi', title: 'Ray Jone & The Nekalabama Thunderstorm', city: 'Tampere', tagline: 'Country soul', tags: 'blues, country soul, blues, americana' };
@@ -122,6 +122,44 @@ test('sanitizeText: siivoaa ja typistää sen sijaan että hylkäisi, ohjausmerk
   assert.equal(sanitizeText(undefined, LIMITS.credit), '');
   assert.equal(sanitizeText('x'.repeat(200), 10).length, 10);
   assert.equal(sanitizeText('paha\u0000merkki', LIMITS.credit), '');
+});
+
+test('validatePatch: bio, jäsenet ja somelinkit (WhatsApp mukana) tallentuvat', () => {
+  const r = validatePatch({
+    title: 'X',
+    bio: 'Ensimmäinen kappale.\n\nToinen kappale.',
+    members: 'Ray Jone — Laulu\nMikko Laine - Kitara\nPelkkä Nimi',
+    social: 'https://wa.me/358401234567\nhttps://instagram.com/rayjone\nhttps://oma-sivu.example.com',
+  });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.value.bio, ['Ensimmäinen kappale.', 'Toinen kappale.']);
+  assert.deepEqual(r.value.members, [
+    { name: 'Ray Jone', role: 'Laulu' },
+    { name: 'Mikko Laine', role: 'Kitara' },
+    { name: 'Pelkkä Nimi', role: '' },
+  ]);
+  assert.deepEqual(r.value.social, [
+    { label: 'WhatsApp', url: 'https://wa.me/358401234567' },
+    { label: 'Instagram', url: 'https://instagram.com/rayjone' },
+    { label: 'oma-sivu.example.com', url: 'https://oma-sivu.example.com/' },
+  ]);
+});
+
+test('validatePatch: bio/jäsenet/some rajat ja virheet', () => {
+  const manyBio = Array.from({ length: 10 }, (_, i) => 'kappale ' + i).join('\n');
+  assert.equal(validatePatch({ title: 'X', bio: manyBio }).value.bio.length, MAX_BIO);
+  const manyMembers = Array.from({ length: 20 }, (_, i) => 'Jäsen ' + i).join('\n');
+  assert.equal(validatePatch({ title: 'X', members: manyMembers }).value.members.length, MAX_MEMBERS);
+  const manySocial = Array.from({ length: 10 }, () => 'https://example.com/a').join('\n');
+  assert.equal(validatePatch({ title: 'X', social: manySocial }).value.social.length, MAX_SOCIAL);
+  assert.deepEqual(fields(validatePatch, { title: 'X', social: 'http://ei-https.example.com' }), ['social']);
+  assert.deepEqual(fields(validatePatch, { title: 'X', bio: 'x'.repeat(LIMITS.bio + 1) }), ['bio']);
+});
+
+test('validateGigEntry: allowPast sallii muokata menneen keikan tietoja', () => {
+  const past = { date: '2020-01-01', venue: 'Vanha paikka' };
+  assert.deepEqual(fields(validateGigEntry, past, TODAY), ['date']);
+  assert.equal(fields(validateGigEntry, past, TODAY, { allowPast: true }), null);
 });
 
 test('todayHelsinki: päivä vaihtuu Suomen ajassa', () => {

@@ -85,14 +85,33 @@ export function slugify(text) {
     .slice(0, 60) || 'bandi';
 }
 
+function buildMembersList(members) {
+  var ul = el('ul', 'members');
+  members.forEach(function (m) {
+    var li = document.createElement('li');
+    var b = document.createElement('b'); b.textContent = m.name;
+    li.appendChild(b);
+    if (m.role) li.appendChild(document.createTextNode(' — ' + m.role));
+    ul.appendChild(li);
+  });
+  return ul;
+}
+
 function todayISO() {
   var n = new Date();
   return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
 }
 
 // ── Yksi keikkarivi ──────────────────────────────────────────────────────
-function buildGigItem(g) {
+// editable: true muokkausnäkymässä (renderEditable) — lisää Muokkaa/Piilota-Näytä-napit
+// ja merkitsee piilotetun keikan. index.html kuuntelee näitä yhdellä delegoidulla
+// tapahtumakäsittelijällä (.gig-edit-btn/.gig-toggle-btn), koska lista piirretään uusiksi.
+function buildGigItem(g, editable) {
     var li = el('li', 'gig');
+    if (editable) {
+      li.dataset.gigId = g.id || '';
+      if (g.status === 'hidden') li.classList.add('gig-hidden');
+    }
 
     var when = el('div', 'gig-when');
     when.appendChild(el('span', 'gig-date', fmtDateISO(g.date)));
@@ -142,22 +161,35 @@ function buildGigItem(g) {
       slot.appendChild(btn);
       li.appendChild(slot);
     }
+
+    if (editable) {
+      var actions = el('div', 'gig-actions');
+      var editBtn = el('button', 'btn ghost small gig-edit-btn', 'Muokkaa');
+      editBtn.type = 'button';
+      actions.appendChild(editBtn);
+      var toggleBtn = el('button', 'btn ghost small gig-toggle-btn', g.status === 'hidden' ? 'Näytä' : 'Piilota');
+      toggleBtn.type = 'button';
+      actions.appendChild(toggleBtn);
+      li.appendChild(actions);
+    }
     return li;
 }
 
-function buildGigList(items) {
+function buildGigList(items, editable) {
   var ol = el('ol', 'gigs');
   var year = null;
   items.forEach(function (g) {
     var y = g.date.slice(0, 4);
     if (y !== year) { year = y; ol.appendChild(el('li', 'gig-year', y)); }
-    ol.appendChild(buildGigItem(g));
+    ol.appendChild(buildGigItem(g, editable));
   });
   return ol;
 }
 
 // ── Keikat: tulevat aina näkyvissä (seuraava ensin), mennet napin takana ──
-export function renderGigSection(gigs) {
+// editable: true näyttää myös piilotetut (himmeinä, Näytä-napilla) — muuten ne eivät
+// näy ollenkaan täällä, koska kutsuja (renderDetail) on jo suodattanut ne pois.
+export function renderGigSection(gigs, editable) {
   var frag = document.createDocumentFragment();
   var today = todayISO();
   var upcoming = (gigs || []).filter(function (g) { return !isPastISO(g.date, today); })
@@ -165,7 +197,7 @@ export function renderGigSection(gigs) {
   var past = (gigs || []).filter(function (g) { return isPastISO(g.date, today); })
     .sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
 
-  frag.appendChild(buildGigList(upcoming));
+  frag.appendChild(buildGigList(upcoming, editable));
 
   if (past.length) {
     var details = document.createElement('details');
@@ -173,7 +205,7 @@ export function renderGigSection(gigs) {
     var summary = document.createElement('summary');
     summary.textContent = 'Menneet keikat (' + past.length + ')';
     details.appendChild(summary);
-    details.appendChild(buildGigList(past));
+    details.appendChild(buildGigList(past, editable));
     frag.appendChild(details);
   }
   return frag;
@@ -213,6 +245,26 @@ export function renderCard(poster) {
   return card;
 }
 
+// ── Irrallinen keikkakortti ruudukkoon (kaikkien bändien tulevat keikat) ────────
+// gig on listPostersin palauttama kevyt muoto: {id, posterId, posterTitle, date, time, venue, city, note}.
+export function renderGigCard(gig) {
+  var card = el('button', 'card glass pad gig-card');
+  card.type = 'button';
+  card.dataset.posterId = gig.posterId;
+
+  var top = el('div', 'card-top');
+  top.appendChild(el('span', 'card-type', 'Keikka'));
+  if (gig.city) top.appendChild(el('span', 'card-city', gig.city));
+  card.appendChild(top);
+
+  card.appendChild(el('div', 'card-title', gig.venue));
+  var when = fmtDateISO(gig.date) + (gig.time ? ' · klo ' + gig.time : '');
+  card.appendChild(el('div', 'card-tagline', when + ' — ' + gig.posterTitle));
+  if (gig.note) card.appendChild(el('div', 'card-tagline', gig.note));
+
+  return card;
+}
+
 export function renderCreateCard() {
   var card = el('button', 'card card-new glass pad');
   card.type = 'button';
@@ -247,7 +299,9 @@ export function renderDetail(poster) {
   }
   frag.appendChild(header);
 
-  if (poster.photo) {
+  // poster.photo voi olla olemassa pelkkien jäsenten takia ilman kuvaa (ks. patchPoster) —
+  // .src tarkistetaan erikseen, ettei piirtyisi tyhjä/rikkinäinen kuvalaatikko.
+  if (poster.photo && poster.photo.src) {
     var figure = document.createElement('figure');
     figure.className = 'glass photo';
     var img = document.createElement('img');
@@ -260,20 +314,16 @@ export function renderDetail(poster) {
     if (poster.photo.credit || (poster.photo.members && poster.photo.members.length)) {
       var cap = el('figcaption', 'photo-caption');
       if (poster.photo.credit) cap.appendChild(el('p', 'credit', 'Kuva: ' + poster.photo.credit));
-      if (poster.photo.members && poster.photo.members.length) {
-        var ul = el('ul', 'members');
-        poster.photo.members.forEach(function (m) {
-          var li = document.createElement('li');
-          var b = document.createElement('b'); b.textContent = m.name;
-          li.appendChild(b);
-          li.appendChild(document.createTextNode(' — ' + m.role));
-          ul.appendChild(li);
-        });
-        cap.appendChild(ul);
-      }
+      if (poster.photo.members && poster.photo.members.length) cap.appendChild(buildMembersList(poster.photo.members));
       figure.appendChild(cap);
     }
     frag.appendChild(figure);
+  } else if (poster.photo && poster.photo.members && poster.photo.members.length) {
+    // Jäsenet ilman kuvaa: oma pieni osio, ei figcaptionin sisällä.
+    var membersSec = el('section', 'glass pad');
+    membersSec.appendChild(el('h2', 'label', 'Jäsenet'));
+    membersSec.appendChild(buildMembersList(poster.photo.members));
+    frag.appendChild(membersSec);
   }
 
   if (poster.bio && poster.bio.length) {
@@ -337,14 +387,18 @@ export function renderDetail(poster) {
     frag.appendChild(listenSec);
   }
 
-  if (poster.gigs && poster.gigs.length) {
+  {
+    // Osio (ja siihen kiinnittyvä "+ Lisää keikka" -nappi) näkyy myös ilman yhtään keikkaa —
+    // muuten bändi jolla ei ole vielä keikkoja ei voisi koskaan lisätä ensimmäistä.
+    // Piilotetut keikat suodattuvat pois vain listasta, ei koko osiosta.
     var gigsSec = el('section', 'glass pad');
     gigsSec.id = 'keikat';
     gigsSec.setAttribute('aria-labelledby', 'gigs-h');
     var ghead = el('div', 'head');
     ghead.appendChild(el('h2', 'label', 'Keikat · Gigs')).id = 'gigs-h';
     gigsSec.appendChild(ghead);
-    gigsSec.appendChild(renderGigSection(poster.gigs));
+    var visibleGigs = (poster.gigs || []).filter(function (g) { return g.status !== 'hidden'; });
+    gigsSec.appendChild(renderGigSection(visibleGigs));
     frag.appendChild(gigsSec);
   }
 
@@ -420,7 +474,35 @@ export function renderEditable(poster) {
   mediaArea.name = 'media'; mediaArea.className = 'inline-edit';
   mediaArea.value = ((poster.discography || []).map(function (d) { return d.url; }).filter(Boolean)).join('\n');
   mediaField.appendChild(mediaArea);
+  // Pikalisäys: liitä yksi linkki kerrallaan kirjoittamatta itse rivinvaihtoja.
+  var addMediaRow = el('div', 'quick-add');
+  var addMediaInput = document.createElement('input');
+  addMediaInput.type = 'url'; addMediaInput.placeholder = 'Liitä YouTube/Spotify/SoundCloud/mp3-linkki…';
+  addMediaInput.className = 'inline-edit';
+  var addMediaBtn = el('button', 'btn ghost small', '+ Lisää kappale');
+  addMediaBtn.type = 'button';
+  addMediaBtn.addEventListener('click', function () {
+    var v = addMediaInput.value.trim();
+    if (!v) return;
+    mediaArea.value = mediaArea.value ? mediaArea.value.replace(/\n+$/, '') + '\n' + v : v;
+    addMediaInput.value = '';
+    addMediaInput.focus();
+  });
+  addMediaRow.appendChild(addMediaInput);
+  addMediaRow.appendChild(addMediaBtn);
+  mediaField.appendChild(addMediaRow);
   toolbar.appendChild(mediaField);
+
+  var socialField = el('label', 'inline-field full');
+  socialField.appendChild(el('span', 't', 'Somelinkit'));
+  var socialArea = document.createElement('textarea');
+  socialArea.name = 'social'; socialArea.className = 'inline-edit';
+  socialArea.placeholder = 'https://wa.me/358…\nhttps://instagram.com/…';
+  socialArea.value = ((poster.contact && poster.contact.social) || []).map(function (s) { return s.url; }).join('\n');
+  socialField.appendChild(socialArea);
+  socialField.appendChild(el('span', 'hint', 'Yksi linkki per rivi, enintään 6. Nimi (WhatsApp, Facebook, Instagram…) tunnistetaan itse.'));
+  toolbar.appendChild(socialField);
+
   toolbar.appendChild(el('p', 'form-status', '')).id = 'wysiwyg-status';
   form.appendChild(toolbar);
 
@@ -478,12 +560,15 @@ export function renderEditable(poster) {
   var photoPreview = document.createElement('img');
   photoPreview.className = 'photo-preview-inline';
   photoPreview.alt = (poster.photo && poster.photo.alt) || poster.title;
-  if (poster.photo) { photoPreview.src = poster.photo.src; } else { photoPreview.hidden = true; }
+  // poster.photo voi olla olemassa pelkkien jäsenten takia ilman kuvaa (ks. patchPoster) —
+  // .src tarkistetaan erikseen, ettei esikatselu näyttäisi rikkinäistä kuvaa.
+  var hasPhoto = Boolean(poster.photo && poster.photo.src);
+  if (hasPhoto) { photoPreview.src = poster.photo.src; } else { photoPreview.hidden = true; }
   figure.appendChild(photoPreview);
   var photoRow = el('div', 'img-edit-row');
   var photoFile = document.createElement('input');
   photoFile.type = 'file'; photoFile.name = 'photo'; photoFile.accept = 'image/jpeg,image/png,image/webp';
-  var photoLabel = el('label', 'file-label', poster.photo ? 'Vaihda kuva' : 'Lisää kuva');
+  var photoLabel = el('label', 'file-label', hasPhoto ? 'Vaihda kuva' : 'Lisää kuva');
   photoLabel.appendChild(photoFile);
   photoRow.appendChild(photoLabel);
   var creditInput = document.createElement('input');
@@ -492,14 +577,27 @@ export function renderEditable(poster) {
   creditInput.value = (poster.photo && poster.photo.credit) || '';
   photoRow.appendChild(creditInput);
   figure.appendChild(photoRow);
+
+  var membersField = el('label', 'inline-field full');
+  membersField.appendChild(el('span', 't', 'Bändin jäsenet'));
+  var membersArea = document.createElement('textarea');
+  membersArea.name = 'members'; membersArea.className = 'inline-edit';
+  membersArea.placeholder = 'Etunimi Sukunimi — Rooli (yksi per rivi)';
+  membersArea.value = ((poster.photo && poster.photo.members) || []).map(function (m) {
+    return m.role ? m.name + ' — ' + m.role : m.name;
+  }).join('\n');
+  membersField.appendChild(membersArea);
+  figure.appendChild(membersField);
   form.appendChild(figure);
 
-  if (poster.bio && poster.bio.length) {
-    var bioSec = el('section', 'glass pad bio');
-    bioSec.appendChild(el('h2', 'label', 'Bio'));
-    poster.bio.forEach(function (p) { bioSec.appendChild(el('p', null, p)); });
-    form.appendChild(bioSec);
-  }
+  var bioField = el('label', 'inline-field full');
+  bioField.appendChild(el('span', 't', 'Bio'));
+  var bioArea = document.createElement('textarea');
+  bioArea.name = 'bio'; bioArea.className = 'inline-edit bio-input';
+  bioArea.placeholder = 'Yksi kappale per rivi';
+  bioArea.value = (poster.bio || []).join('\n');
+  bioField.appendChild(bioArea);
+  form.appendChild(bioField);
 
   var disco = (poster.discography && poster.discography.length) ? poster.discography
     : (poster.embed ? [{ embed: poster.embed }] : []);
@@ -513,13 +611,15 @@ export function renderEditable(poster) {
     form.appendChild(listenSec);
   }
 
-  if (poster.gigs && poster.gigs.length) {
+  {
+    // Näyttää myös piilotetut (himmeinä, Näytä-napilla) — samasta syystä kuin
+    // renderDetailissa osio näkyy myös ilman yhtään keikkaa (napin kiinnityskohta).
     var gigsSec = el('section', 'glass pad');
     gigsSec.id = 'keikat';
     var ghead = el('div', 'head');
     ghead.appendChild(el('h2', 'label', 'Keikat · Gigs'));
     gigsSec.appendChild(ghead);
-    gigsSec.appendChild(renderGigSection(poster.gigs));
+    gigsSec.appendChild(renderGigSection(poster.gigs || [], true));
     form.appendChild(gigsSec);
   }
 
@@ -542,14 +642,8 @@ export function renderEditable(poster) {
   emailInput.placeholder = 'yhteys@esimerkki.fi';
   ec.appendChild(emailInput);
   booking.appendChild(ec);
-  if (C.social && C.social.length) {
-    var soc = el('div', 'social');
-    C.social.forEach(function (s) {
-      var a = document.createElement('a'); a.href = s.url; a.target = '_blank'; a.rel = 'noreferrer'; a.textContent = s.label;
-      soc.appendChild(a);
-    });
-    booking.appendChild(soc);
-  }
+  // Somelinkit muokataan yllä työkalupalkin "Somelinkit"-kentästä (WhatsApp ym.) — ei
+  // näytetä tässä erikseen, ettei sama tieto muokkaannu kahdesta eri paikasta.
   bookSec.appendChild(booking);
   form.appendChild(bookSec);
 
