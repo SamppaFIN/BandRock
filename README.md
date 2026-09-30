@@ -47,6 +47,24 @@ CODE_SECRET="sama arvo kuin secret put" node worker/seed-remote.mjs
 - Tee commit ja push `main`-haaraan.
 - Jos Pagesin osoite on eri kuin `https://samppafin.github.io`, päivitä se `ALLOWED_ORIGINS`-arvoon tiedostossa `wrangler.toml` ja julkaise Worker uudelleen. Muuten selain estää sivun kutsut Workeriin.
 
+## 4. Automaattinen julkaisu
+
+Jokainen push `main`-haaraan ajaa järjestyksessä: **testit → Worker (Cloudflare) → sivu (GitHub Pages)**. Sivu julkaistaan vasta kun Worker on päivitetty, joten sivu ei voi enää olla Workeria edellä. Jos Workerin julkaisu kaatuu, sivukin jää edelliseen versioon.
+
+Tämä vaatii kaksi salaisuutta GitHubiin (kerran):
+
+1. **API-token:** Cloudflaren dashboard → oikea yläkulma → **My Profile** → **API Tokens** → **Create Token** → pohja **Edit Cloudflare Workers** → valitse oma tilisi → **Create Token**. Kopioi token (näkyy vain kerran).
+   - Jos julkaisu valittaa R2:sta, muokkaa tokenia ja lisää oikeus **Account → Workers R2 Storage → Edit**.
+2. **Tilin tunnus (Account ID):** `npx wrangler whoami` tulostaa sen, tai dashboardin Workers-sivun oikeasta laidasta.
+3. GitHubissa: repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**:
+   - `CLOUDFLARE_API_TOKEN` = kohdan 1 token
+   - `CLOUDFLARE_ACCOUNT_ID` = kohdan 2 tunnus
+4. Aja julkaisu kerran käsin: repo → **Actions** → **Pages** → **Run workflow**.
+
+Tokenia ei liitetä mihinkään tiedostoon eikä keskusteluun. Workerin omat salaisuudet (`CODE_SECRET`, `ADMIN_SECRET`, `TURNSTILE_SECRET`) pysyvät Cloudflaressa ennallaan — automaattinen julkaisu ei koske niihin.
+
+Ilman salaisuuksia Worker-vaihe pysähtyy selkeään virheeseen ("puuttuu GitHubin salaisuuksista") eikä sivua julkaista. Käsin julkaisu (`npm run deploy:worker`) toimii edelleen varakeinona.
+
 ## Miten sivu toimii
 
 ```

@@ -34,7 +34,7 @@
   "spotify_artisti": "https://open.spotify.com/artist/6MZ5sOhKDci1bYweyqJBj7",
   "osoite": "https://samppafin.github.io/Nekalamaba/ (toistaiseksi; muuttuu .../BandRock/ksi kun repo on nimetty uudelleen)",
   "hosting": "Sivu: GitHub Pages, ei build-vaihetta. Data (vaihe 2): Cloudflare Worker + R2.",
-  "julkaisu": "Sivu: GitHub Actions → Pages. Worker: wrangler deploy käsin (kuten Klitoritarissa)."
+  "julkaisu": "Push main → GitHub Actions: testit → Worker (wrangler deploy, salaisuudet CLOUDFLARE_API_TOKEN/CLOUDFLARE_ACCOUNT_ID) → Pages. Käsin npm run deploy:worker varakeinona."
 }
 ```
 
@@ -121,7 +121,7 @@ Tiketit 1–12 koskevat vanhaa yhden-bändin sivua (osa on yhä ajan tasalla, os
     { "id": "sivu",     "nimi": "🎸 Bändisivu (historia)",   "tiketit": [1, 2, 3, 4], "valmius": 100 },
     { "id": "keikat",   "nimi": "🎤 Keikkailmoitukset (D1, korvautuu vaiheessa 2)", "tiketit": [5, 6, 7], "valmius": 98 },
     { "id": "suojaus",  "nimi": "🛡️ Suojaus ja piilotus (D1-versio)", "tiketit": [8, 9], "valmius": 35 },
-    { "id": "julkaisu", "nimi": "🚀 Julkaisu",               "tiketit": [10, 11, 12], "valmius": 83 },
+    { "id": "julkaisu", "nimi": "🚀 Julkaisu",               "tiketit": [10, 11, 12, 24], "valmius": 80 },
     { "id": "bandrock", "nimi": "⚡ BandRock-alusta",         "tiketit": [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23], "valmius": 98 }
   ],
   "tiketit": [
@@ -206,7 +206,16 @@ Tiketit 1–12 koskevat vanhaa yhden-bändin sivua (osa on yhä ajan tasalla, os
         "Keikan muokkauksessa nykyinen kuva näkyy esikatseluna + 'Poista nykyinen kuva' -valinta (himmentää esikatselun); editGig removePhoto='1' poistaa kuvan ja tiedoston",
         "Korjattu: 'Mikä on BandRock?' -ikkunan esimerkkikortti ('Esimerkkiä ei saatu ladattua') — loadIndex palauttaa tiketistä 20 lähtien {posters, gigs}, tämä kutsupaikka käytti vielä vanhaa listamuotoa. Lisätty savutestiin pysyvästi",
         "31 selaintarkistusta + 1 yksikkötesti läpi, aiemmat testit (52 + 26 + savutesti) yhä läpi, axe-core puhtaana"
-      ], "valmius": 100 }
+      ], "valmius": 100 },
+    { "id": 24, "epic": "julkaisu", "nimi": "Workerin automaattinen julkaisu GitHub Actionsissa", "effort": "S", "riippuvuudet": [11], "status": "review",
+      "acceptance_criteria": [
+        "pages.yml: verify → worker → deploy; Pages-julkaisu tarvitsee onnistuneen Worker-julkaisun (needs: [verify, worker]), joten sivu ei voi olla Workeria edellä",
+        "worker-työ vain push mainiin / käsiajo, ei pull requesteille; npm ci lukitusta versiosta (wrangler 4.136.1)",
+        "Puuttuva CLOUDFLARE_API_TOKEN tai CLOUDFLARE_ACCOUNT_ID → selkeä ::error:: ja pysähdys ennen deployta",
+        "Todennettu paikallisesti: YAML jäsentyy (työt ja askeleet oikeassa järjestyksessä), wrangler deploy --dry-run läpi (R2, rajoitin, ALLOWED_ORIGINS), npm ci puhtaassa kansiossa läpi",
+        "README kohta 4 (Automaattinen julkaisu): tokenin luonti, Account ID, GitHub-salaisuudet, käsiajo",
+        "Infinite (tekemättä): salaisuudet GitHubiin + Run workflow; ensimmäinen onnistunut ajo todentaa loput"
+      ], "valmius": 70 }
   ]
 }
 ```
@@ -215,6 +224,12 @@ Tiketit 1–12 koskevat vanhaa yhden-bändin sivua (osa on yhä ajan tasalla, os
 - Pidä tiketit pieninä ja hyväksymiskriteerit selkeinä. Ei ominaisuuksia, joita ei ole tiketeissä.
 
 ## 5. Päätökset
+
+**Päätetty (Infinite, 30.9.2026) — Worker julkaistaan automaattisesti (tiketti 24)**
+- Syy: sivu ja Worker ajautuivat toistuvasti eri versioihin (viimeksi WhatsApp/somelinkkien tallennus kaatui, koska sivu oli uusi ja käsin julkaistu Worker vanha). Infinite: "juu laitetaan automaattiseksi".
+- Järjestys testit → Worker → Pages. Jos Worker-julkaisu kaatuu, sivu jää vanhaan versioon (vanha sivu + uusi Worker on turvallisempi yhdistelmä kuin toisin päin, koska Worker on tehty taaksepäin yhteensopivaksi).
+- Salaisuudet vain GitHubin Actions-salaisuuksina, ei koskaan tiedostoihin tai keskusteluun. Workerin omat salaisuudet (CODE_SECRET ym.) pysyvät Cloudflaressa, deploy ei koske niihin.
+- Tuotannon siemennys (`seed-remote.mjs`) ei ole osa automaattista julkaisua — kertaluonteinen, tehty jo.
 
 **Päätetty (Infinite, 30.9.2026) — Klikkaa-muokataksesi (korvaa tiketin 19 "kaikki kentät aina auki" -mallin)**
 - Infinite: "koko sivu näyttää täysin samalta kuin se julkaistaessa näyttäisi… klikkaamalla vasta tulee editointinäkymät näkyviin". Tiketin 19 muokkain näytti kaikki kentät ja työkalupalkin kerralla — logo näkyi kahdesti ja musiikkilinkit olivat irrallaan sivun ylälaidassa.
