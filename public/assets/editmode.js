@@ -9,6 +9,42 @@
 'use strict';
 
 import { renderDetail, renderDiscoItem, urlFromEmbed, el } from './render.js';
+import { icon, serviceOf } from './icons.js';
+
+// Linkkityypit yhteystietojen muokkaimeen. Jokaiselle oma, luonteva syöte: WhatsAppille
+// pelkkä puhelinnumero, Instagramille käyttäjänimi jne. — valmis https-osoite
+// rakennetaan tästä. Palvelin tarkistaa lopullisen osoitteen joka tapauksessa.
+function handleBuilder(key, base) {
+  return function (v) {
+    v = v.trim();
+    if (/^https:\/\//.test(v)) return serviceOf(v) === key ? v : null;
+    var h = v.replace(/^@/, '');
+    return /^[A-Za-z0-9._-]{1,60}$/.test(h) ? base + h : null;
+  };
+}
+function linkBuilder(key) {
+  return function (v) { v = v.trim(); return /^https:\/\/\S+$/.test(v) && serviceOf(v) === key ? v : null; };
+}
+var LINK_KINDS = [
+  { key: 'whatsapp', name: 'WhatsApp', type: 'tel', field: 'Puhelinnumero', placeholder: '040 123 4567 tai +358 40 123 4567',
+    error: 'Anna puhelinnumero, esim. 040 123 4567.',
+    build: function (v) {
+      var d = v.replace(/[^\d+]/g, '');
+      if (d.charAt(0) === '+') d = d.slice(1);
+      else if (d.slice(0, 2) === '00') d = d.slice(2);
+      else if (d.charAt(0) === '0') d = '358' + d.slice(1); // suomalainen numero ilman maatunnusta
+      return /^\d{7,15}$/.test(d) ? 'https://wa.me/' + d : null;
+    } },
+  { key: 'instagram', name: 'Instagram', field: 'Käyttäjänimi tai linkki', placeholder: '@bandi', error: 'Anna käyttäjänimi (esim. @bandi) tai instagram.com-linkki.', build: handleBuilder('instagram', 'https://www.instagram.com/') },
+  { key: 'facebook', name: 'Facebook', field: 'Linkki Facebook-sivulle', placeholder: 'https://facebook.com/bandi', error: 'Liitä facebook.com-linkki, joka alkaa https://', build: linkBuilder('facebook') },
+  { key: 'tiktok', name: 'TikTok', field: 'Käyttäjänimi tai linkki', placeholder: '@bandi', error: 'Anna käyttäjänimi (esim. @bandi) tai tiktok.com-linkki.', build: handleBuilder('tiktok', 'https://www.tiktok.com/@') },
+  { key: 'youtube', name: 'YouTube', field: 'Linkki kanavalle', placeholder: 'https://youtube.com/@bandi', error: 'Liitä youtube.com-linkki, joka alkaa https://', build: linkBuilder('youtube') },
+  { key: 'spotify', name: 'Spotify', field: 'Linkki Spotifyyn', placeholder: 'https://open.spotify.com/artist/…', error: 'Liitä spotify.com-linkki, joka alkaa https://', build: linkBuilder('spotify') },
+  { key: 'soundcloud', name: 'SoundCloud', field: 'Käyttäjänimi tai linkki', placeholder: 'bandi', error: 'Anna käyttäjänimi tai soundcloud.com-linkki.', build: handleBuilder('soundcloud', 'https://soundcloud.com/') },
+  { key: 'x', name: 'X', field: 'Käyttäjänimi tai linkki', placeholder: '@bandi', error: 'Anna käyttäjänimi (esim. @bandi) tai x.com-linkki.', build: handleBuilder('x', 'https://x.com/') },
+  { key: 'link', name: 'Muu linkki', field: 'Osoite', placeholder: 'https://bandi.fi', error: 'Liitä osoite, joka alkaa https://',
+    build: function (v) { v = v.trim(); return /^https:\/\/[^\s]+\.[^\s]+$/.test(v) ? v : null; } },
+];
 
 var REGION_LABELS = {
   title: 'Nimi, logo ja kaupunki', tagline: 'Kuvaus', tags: 'Tyylilajit', photo: 'Kuva ja jäsenet',
@@ -65,6 +101,124 @@ function labeled(text, ctrl, hint) {
   return l;
 }
 
+// Yhteystietojen linkit: lista (ikoni + nimi + osoite + Poista) ja ikoninapit uuden
+// lisäämiseen. Napista aukeaa juuri sille palvelulle sopiva kenttä; "Muu linkki" saa
+// lisäksi oman selitteen (näkyy linkin tekstinä sivulla).
+function socialEditor(items) {
+  var wrap = el('div', 'social-editor');
+  var list = el('div', 'social-list');
+  var picker = el('div', 'svc-picker');
+  picker.setAttribute('role', 'group');
+  picker.setAttribute('aria-label', 'Lisää linkki');
+  var fullNote = el('p', 'hint', 'Enintään ' + MAX_LINKS + ' linkkiä — poista jokin lisätäksesi uuden.');
+
+  var form = el('div', 'quick-add svc-form');
+  form.hidden = true;
+  var formTitle = el('p', 'svc-form-title');
+  var labelInput = control('input', '', { maxLength: 60, placeholder: 'esim. Kotisivut, Liput, Kauppa', className: 'inline-edit' });
+  var labelWrap = labeled('Selite', labelInput, 'Näkyy linkin tekstinä sivulla.');
+  var valueInput = control('input', '', { className: 'inline-edit' });
+  var valueWrap = labeled('', valueInput);
+  var err = el('p', 'form-status err');
+  err.hidden = true;
+  var addBtn = el('button', 'btn small', 'Lisää');
+  addBtn.type = 'button';
+  var cancelBtn = el('button', 'btn ghost small', 'Peru');
+  cancelBtn.type = 'button';
+  var btns = el('div', 'toolbar-actions');
+  btns.appendChild(addBtn);
+  btns.appendChild(cancelBtn);
+  form.appendChild(formTitle);
+  form.appendChild(labelWrap);
+  form.appendChild(valueWrap);
+  form.appendChild(err);
+  form.appendChild(btns);
+
+  var kind = null;
+  var chips = LINK_KINDS.map(function (k) {
+    var b = el('button', 'btn ghost small svc-btn');
+    b.type = 'button';
+    b.appendChild(icon(k.key));
+    b.appendChild(document.createTextNode(k.name));
+    b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', function () { openForm(k); });
+    picker.appendChild(b);
+    return b;
+  });
+
+  function openForm(k) {
+    kind = k;
+    chips.forEach(function (b, i) { b.setAttribute('aria-pressed', String(LINK_KINDS[i] === k)); });
+    formTitle.replaceChildren(icon(k.key), document.createTextNode(k.key === 'link' ? 'Uusi linkki' : 'Uusi ' + k.name + '-linkki'));
+    valueWrap.querySelector('.t').textContent = k.field;
+    valueInput.type = k.type || (k.key === 'link' ? 'url' : 'text');
+    valueInput.placeholder = k.placeholder;
+    valueInput.value = '';
+    labelInput.value = '';
+    labelWrap.hidden = k.key !== 'link';
+    err.hidden = true;
+    form.hidden = false;
+    (k.key === 'link' ? labelInput : valueInput).focus();
+  }
+  function closeForm() {
+    kind = null;
+    form.hidden = true;
+    chips.forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+  }
+  function doAdd() {
+    if (!kind) return;
+    var url = kind.build(valueInput.value);
+    if (!url) {
+      err.textContent = '⚠ ' + kind.error;
+      err.hidden = false;
+      valueInput.focus();
+      return;
+    }
+    var label = kind.key === 'link' ? (clean(labelInput.value) || socialLabel(url)) : kind.name;
+    items.push({ label: label, url: url });
+    var added = kind;
+    closeForm();
+    draw();
+    chips[LINK_KINDS.indexOf(added)].focus();
+  }
+  addBtn.addEventListener('click', doAdd);
+  cancelBtn.addEventListener('click', closeForm);
+  form.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); doAdd(); }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeForm(); } // sulkee vain lisäyksen, ei koko muokkainta
+  });
+
+  function draw() {
+    list.replaceChildren();
+    items.forEach(function (s, i) {
+      var row = el('div', 'social-row');
+      row.appendChild(icon(serviceOf(s.url)));
+      var txt = el('div', 'social-item');
+      txt.appendChild(el('strong', null, s.label || socialLabel(s.url)));
+      txt.appendChild(el('span', 'hint', s.url));
+      row.appendChild(txt);
+      var rm = el('button', 'btn ghost small', '✕ Poista');
+      rm.type = 'button';
+      rm.setAttribute('aria-label', 'Poista ' + (s.label || s.url));
+      rm.addEventListener('click', function () { items.splice(i, 1); draw(); });
+      row.appendChild(rm);
+      list.appendChild(row);
+    });
+    var full = items.length >= MAX_LINKS;
+    chips.forEach(function (b) { b.disabled = full; });
+    fullNote.hidden = !full;
+    if (full) closeForm();
+  }
+
+  wrap.appendChild(list);
+  wrap.appendChild(el('p', 't social-heading', 'Lisää linkki'));
+  wrap.appendChild(picker);
+  wrap.appendChild(fullNote);
+  wrap.appendChild(form);
+  draw();
+  return wrap;
+}
+
 /** Luonnos palvelimen PATCH-muotoon (sama muoto kuin validatePatch odottaa). */
 export function draftPayload(d) {
   var photo = d.photo || {};
@@ -78,7 +232,8 @@ export function draftPayload(d) {
     media: (d.discography || []).map(function (x) { return x.url || urlFromEmbed(x.embed) || x.audio || ''; }).filter(Boolean).join('\n'),
     bio: (d.bio || []).join('\n'),
     members: (photo.members || []).map(function (m) { return m.role ? m.name + ' — ' + m.role : m.name; }).join('\n'),
-    social: (contact.social || []).map(function (s) { return s.url; }).join('\n'),
+    // "Selite https://…" — palvelin käyttää selitettä linkin nimenä (ks. schema.js parseSocial).
+    social: (contact.social || []).map(function (s) { return (s.label ? clean(s.label) + ' ' : '') + s.url; }).join('\n'),
     credit: photo.credit || '',
   };
 }
@@ -383,21 +538,16 @@ export function createEditor(opts) {
       if (C.phone) node.appendChild(el('p', 'hint', 'Puhelin: ' + (C.phoneDisplay || C.phone)));
       var email = control('input', C.email, { type: 'email', maxLength: 120, placeholder: 'yhteys@esimerkki.fi', className: 'inline-edit' });
       node.appendChild(labeled('Sähköposti (näkyy julkisesti)', email));
-      node.appendChild(el('span', 't social-heading', 'Somelinkit'));
+      node.appendChild(el('span', 't social-heading', 'Linkit'));
       var social = (C.social || []).map(function (s) { return { label: s.label, url: s.url }; });
-      node.appendChild(linkList(social, function (s) {
-        var row = el('div', 'social-item');
-        row.appendChild(el('strong', null, s.label || socialLabel(s.url)));
-        row.appendChild(el('span', 'hint', s.url));
-        return row;
-      }, 'Liitä linkki, esim. https://wa.me/358…', '+ Lisää linkki'));
+      node.appendChild(socialEditor(social));
       apply = function () {
         draft.contact = Object.assign({}, draft.contact || {}, {
           email: clean(email.value) || null,
           social: social.map(function (s) { return { label: s.label || socialLabel(s.url), url: s.url }; }),
         });
       };
-      return { node: frame(node, 'WhatsApp, Facebook, Instagram ym. tunnistetaan linkistä itse.'), apply: apply };
+      return { node: frame(node), apply: apply };
     }
 
     if (name === 'gigs') {

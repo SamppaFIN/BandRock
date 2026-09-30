@@ -102,7 +102,7 @@ Kuka tahansa  → lomake → POST/PATCH/DELETE API_URL/posters[...] → Worker t
 public/
   404.html                  GH Pages -uudelleenohjaus
   index.html                 reititin + ruudukko + kaikki dialogit (luo/muokkaa/lisää keikka/info)
-  assets/{bandrock.css, render.js, router.js, editmode.js}
+  assets/{bandrock.css, render.js, router.js, editmode.js, icons.js}
   data/{index.json, ray-jone.json}
   img/, fonts/
 worker/  (vaihe 1: koskematon D1-versio; vaihe 2: R2-versio)
@@ -122,7 +122,7 @@ Tiketit 1–12 koskevat vanhaa yhden-bändin sivua (osa on yhä ajan tasalla, os
     { "id": "keikat",   "nimi": "🎤 Keikkailmoitukset (D1, korvautuu vaiheessa 2)", "tiketit": [5, 6, 7], "valmius": 98 },
     { "id": "suojaus",  "nimi": "🛡️ Suojaus ja piilotus (D1-versio)", "tiketit": [8, 9], "valmius": 35 },
     { "id": "julkaisu", "nimi": "🚀 Julkaisu",               "tiketit": [10, 11, 12], "valmius": 83 },
-    { "id": "bandrock", "nimi": "⚡ BandRock-alusta",         "tiketit": [13, 14, 15, 16, 17, 18, 19, 20, 21], "valmius": 98 }
+    { "id": "bandrock", "nimi": "⚡ BandRock-alusta",         "tiketit": [13, 14, 15, 16, 17, 18, 19, 20, 21, 22], "valmius": 98 }
   ],
   "tiketit": [
     { "id": 1, "epic": "sivu", "nimi": "Portaa sivu tavalliseksi HTML:ksi", "effort": "S", "riippuvuudet": [], "status": "done",
@@ -187,6 +187,17 @@ Tiketit 1–12 koskevat vanhaa yhden-bändin sivua (osa on yhä ajan tasalla, os
         "Korjattu piilevä tietohäviö: Ray Jonen julkaisuilla ei ollut url-kenttää → vanha muokkain näytti musiikin tyhjänä ja tallennus olisi pyyhkinyt Madridin ja Spotifyn. Nyt urlFromEmbed + palvelin säilyttää vanhan julkaisun nimen/tyypin/kansikuvan kun upotus täsmää",
         "Kuvaaja tallentuu PATCHilla (ei enää vain kuvan mukana); kuvan vaihto säilyttää jäsenet ja kuvaajan; Spotify tunnistetaan somelinkiksi",
         "52 selaintarkistusta + savutesti + 50 yksikkötestiä läpi, axe-core puhtaana (myös otsikkomuokkain auki logolla ja ilman), 390 px ilman vaakavieritystä"
+      ], "valmius": 100 },
+    { "id": 22, "epic": "bandrock", "nimi": "Yhteystietojen linkit ikoneilla + oma linkki selitteellä", "effort": "M", "riippuvuudet": [21], "status": "done",
+      "acceptance_criteria": [
+        "Yhteystietojen muokkaimessa ikoninapit: WhatsApp, Instagram, Facebook, TikTok, YouTube, Spotify, SoundCloud, X, Muu linkki. Napista aukeaa sille sopiva kenttä",
+        "WhatsApp puhelinnumerolla (040 123 4567 / +358… → https://wa.me/358401234567), Instagram/TikTok/SoundCloud/X käyttäjänimellä tai linkillä, Facebook/YouTube/Spotify linkillä joka osoittaa oikeaan palveluun (muu hylätään ⚠-viestillä)",
+        "Muu linkki: oma selite (esim. Kotisivut, Liput) + https-osoite; selite näkyy linkin tekstinä",
+        "Ikonit näkyvät sekä muokkaimessa että julkaistulla sivulla; ikoni valitaan aina verkkotunnuksesta, ei selitteestä (selite 'Facebook' huijauslinkissä saa ketjuikonin)",
+        "Ikonit upotettu (public/assets/icons.js: Simple Icons 16.33.0 CC0 + Feather link MIT) — ei pyyntöjä kolmansille osapuolille",
+        "Palvelin: somerivi 'Selite https://…' (parseSocial), selite ≤ 60 merkkiä, ilman selitettä nimi tunnistetaan kuten ennen; Ray Jonen vanhat linkkinimet säilyvät tallennuksen yli",
+        "Enter lisää linkin, Esc sulkee vain lisäyksen (ei koko muokkainta), enintään 6 linkkiä",
+        "26 selaintarkistusta + 1 uusi yksikkötesti läpi, axe-core puhtaana lisäyslomake auki, 390 px ilman vaakavieritystä; aiemmat 52 + savutesti yhä läpi"
       ], "valmius": 100 }
   ]
 }
@@ -392,6 +403,8 @@ Jokainen vastaus alkaa lyhyellä otsikolla. Se on tehty luettavaksi nopeasti.
 - **UI:n uuden osion lisääminen (esim. muokkausnäkymä) ei automaattisesti peri sivun MUUALLA rakennettua liitäntälogiikkaa.** "+ Lisää keikka" -nappi kiinnitettiin alunperin vain `showDetail()`:n sisällä (`wrap.querySelector('#keikat .head')`), koska ainoa muokkausreitti oli silloin modaali-ikkuna eikä koskenut Keikat-osion rakenteeseen. Kun WYSIWYG-muokkaus (tiketti 19) alkoi piirtää oman `#keikat`-osionsa `enterEditMode()`:ssa, nappi puuttui sieltä kokonaan eikä kukaan huomannut ennen kuin testattiin oikeasti 0 keikan bändillä. Kun kaksi eri funktiota piirtävät rakenteellisesti saman osion, tarkista aina että KAIKKI siihen kiinnittyvä liitäntäkoodi on lisätty jokaiseen piirtopaikkaan, ei vain ensimmäiseen.
 - **Lomake joka näyttää vain osan tallennettavasta datasta ja lähettää sen kokonaan, pyyhkii loput.** Ray Jonen julkaisuilla oli vain `embed` (ei `url`), muokkain esitäytti linkkikentän `url`eista → tyhjä → Tallenna olisi poistanut julkaisut. Kun lomake korvaa kokonaisen listan, tarkista että JOKAINEN olemassa oleva alkio pystyy kulkemaan lomakkeen läpi takaisin (tässä `urlFromEmbed`) ja että palvelin säilyttää lomakkeelle näkymättömät kentät (nimi, kansikuva) yhdistämällä vanhaan.
 - `.pad` on pystysuuntainen flex (`flex-direction: column`). Kun sen päälle rakennetaan vaakarivi (esim. `.edit-bar`), `flex-direction: row` pitää asettaa itse — muuten lapsen `flex: 1 1 260px` tarkoittaa 260 px **korkeutta** (sama oppi kuin aiemmin `flex-basis`ista). Löytyi vain kuvakaappauksesta.
+- Scratchpadin testiapuvälineet (esim. `gh-pages-sim.mjs`) voivat kadota istuntojen välillä. Jos Pages-simulaattori ei vastaa (curl → 000), tarkista sen loki ennen kuin epäilet sivun koodia — selaintesti näytti "nappia ei löydy", vaikka vika oli puuttuvassa palvelimessa. Tarkista valmiussilmukassa kaikki kolme palvelinta (8799, 8081, 9333), ei vain kahta.
+- Kun lomakkeessa on piilotettu kenttä ennen näkyvää samaa tyyppiä (`input[type=text]`), `querySelector` osuu piilotettuun. Testeissä kohdista näkyvään kenttään rakenteen kautta, älä pelkällä tyypillä.
 - PowerShell-työkalun turvasuodatin tulkitsi `taskkill /PID …` samassa komennossa `Remove-Item`in kanssa poistopoluksi ja esti koko komennon. Pidä prosessien pysäytys (`Stop-Process`) ja tiedostopoistot eri kutsuissa.
 - `await x?.y > 0` ei tee mitä luulee: `await`:n precedence on matalampi kuin `?.`:n, joten se parsiutuu `await (x?.y > 0)` — jos `x` on `Promise`, `Promise.y` on aina `undefined`. Suluta aina `(await x)?.y > 0` tai tallenna välitulos muuttujaan ensin.
 

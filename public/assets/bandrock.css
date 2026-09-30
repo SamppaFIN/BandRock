@@ -277,7 +277,15 @@
   .link-row { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
   .link-row > .btn { align-self: flex-end; }
   .disco-pending { padding: 14px; border: 1px dashed var(--hairline); border-radius: 10px; font-size: 15px; color: var(--text-soft); overflow-wrap: anywhere; }
-  .social-item { display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+  .social-item { display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; min-width: 0; flex: 1; }
+  .social-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+  .social-row > .svc-icon { width: 22px; height: 22px; }
+  .svc-picker { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .svc-btn { gap: 8px; letter-spacing: 0.06em; }
+  .svc-btn .svc-icon { color: currentColor; }
+  .svc-btn[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+  .quick-add.svc-form { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px; border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent); border-radius: 10px; }
+  .svc-form-title { margin: 0; display: flex; align-items: center; gap: 8px; font-weight: 700; }
   .quick-add { display: flex; gap: 8px; margin-top: 14px; }
   .quick-add input { flex: 1; min-width: 0; }
   @media (max-width: 520px) { .quick-add { flex-direction: column; } }
@@ -441,10 +449,11 @@
   .social { display: flex; gap: 6px 22px; flex-wrap: wrap; align-items: center; }
   .social a {
     font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase;
-    min-height: var(--tap); display: inline-flex; align-items: center;
+    min-height: var(--tap); display: inline-flex; align-items: center; gap: 8px;
     border-bottom: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
   }
   .social a:hover { border-bottom-color: var(--text); }
+  .svc-icon { width: 18px; height: 18px; flex: none; color: var(--gold); }
 
   .next-cta { max-width: 860px; margin: 0 auto; display: flex; justify-content: center; padding-top: 26px; }
   .prose { display: flex; flex-direction: column; gap: 16px; }

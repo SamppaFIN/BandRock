@@ -154,6 +154,19 @@ test('validatePatch: kuvaaja (credit) ja Spotify-somelinkin nimi', () => {
   assert.deepEqual(fields(validatePatch, { title: 'X', credit: 'x'.repeat(LIMITS.credit + 1) }), ['credit']);
 });
 
+test('validatePatch: somelinkin oma selite (muu linkki) säilyy, ilman selitettä nimi tunnistetaan', () => {
+  const r = validatePatch({ title: 'X', social: 'Kotisivut https://bandi.example.fi/\nLiput — https://liput.example.com/keikka\nhttps://wa.me/358401234567' });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.value.social, [
+    { label: 'Kotisivut', url: 'https://bandi.example.fi/' },
+    { label: 'Liput', url: 'https://liput.example.com/keikka' },
+    { label: 'WhatsApp', url: 'https://wa.me/358401234567' },
+  ]);
+  assert.deepEqual(fields(validatePatch, { title: 'X', social: 'x'.repeat(LIMITS.socialLabel + 1) + ' https://a.example.com' }), ['social']);
+  assert.deepEqual(fields(validatePatch, { title: 'X', social: 'Paha\u0000 https://a.example.com' }), ['social']);
+  assert.deepEqual(fields(validatePatch, { title: 'X', social: 'Kotisivut ilman linkkiä' }), ['social']);
+});
+
 test('validatePatch: bio/jäsenet/some rajat ja virheet', () => {
   const manyBio = Array.from({ length: 10 }, (_, i) => 'kappale ' + i).join('\n');
   assert.equal(validatePatch({ title: 'X', bio: manyBio }).value.bio.length, MAX_BIO);

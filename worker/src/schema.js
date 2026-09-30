@@ -1,7 +1,7 @@
 /** Ilmoituksen (posterin) tarkistus ja siivous. Sama koodi Workerissa ja testeissä. */
 import { parseMedia, parseAudio } from './media.js';
 
-export const LIMITS = { title: 80, city: 60, tagline: 400, tag: 30, email: 120, note: 300, venue: 80, url: 300, media: 300, credit: 160, bio: 500, member: 120, social: 300 };
+export const LIMITS = { title: 80, city: 60, tagline: 400, tag: 30, email: 120, note: 300, venue: 80, url: 300, media: 300, credit: 160, bio: 500, member: 120, social: 300, socialLabel: 60 };
 export const MAX_TAGS = 6;
 export const MAX_MEDIA = 6;
 export const MAX_BIO = 6;
@@ -131,19 +131,28 @@ function parseMembers(raw, errors) {
   return out;
 }
 
-// Yksi https-linkki per rivi. Nimi (Facebook, WhatsApp…) tunnistetaan verkkotunnuksesta,
-// jotta käyttäjän ei tarvitse itse kirjoittaa sitä — sama periaate kuin media-linkeillä.
+// Yksi linkki per rivi: "https://…" tai "Selite https://…" (esim. "Kotisivut https://bandi.fi").
+// Ilman selitettä nimi (Facebook, WhatsApp…) tunnistetaan verkkotunnuksesta, jotta käyttäjän
+// ei tarvitse kirjoittaa sitä. Sivun ikoni valitaan aina verkkotunnuksesta, ei selitteestä.
 function parseSocial(raw, errors) {
   if (typeof raw !== 'string' || !raw.trim()) return [];
   const lines = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).slice(0, MAX_SOCIAL);
   const out = [];
   for (const line of lines) {
-    if (len(line) > LIMITS.social) { errors.social = `Jokainen linkki enintään ${LIMITS.social} merkkiä.`; return []; }
-    const url = httpsHref(line);
+    const m = line.match(/^(.*?)\s*(https:\/\/\S+)$/);
+    if (!m) { errors.social = 'Linkkien pitää olla https://-osoitteita, yksi per rivi.'; return []; }
+    const rawUrl = m[2];
+    if (len(rawUrl) > LIMITS.social) { errors.social = `Jokainen linkki enintään ${LIMITS.social} merkkiä.`; return []; }
+    const url = httpsHref(rawUrl);
     if (!url) { errors.social = 'Linkkien pitää olla https://-osoitteita, yksi per rivi.'; return []; }
+    const given = clean(m[1].replace(/[\s|:—-]+$/, ''));
+    if (given && (len(given) > LIMITS.socialLabel || BAD_CHARS.test(given))) {
+      errors.social = `Linkin selite enintään ${LIMITS.socialLabel} merkkiä.`;
+      return [];
+    }
     let host;
     try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { host = url; }
-    const label = (SOCIAL_LABELS.find(([re]) => re.test(host)) || [null, host])[1];
+    const label = given || (SOCIAL_LABELS.find(([re]) => re.test(host)) || [null, host])[1];
     out.push({ label, url });
   }
   return out;

@@ -2,6 +2,8 @@
 // Käyttäjän teksti menee aina textContentilla, ei koskaan innerHTML:llä.
 'use strict';
 
+import { icon, serviceOf } from './icons.js';
+
 export const WEEKDAYS = ['su', 'ma', 'ti', 'ke', 'to', 'pe', 'la'];
 
 // Soittimet: vain nämä osoitteet upotetaan. Palvelin (Worker) rakentaa nämä myöhemmin
@@ -477,7 +479,9 @@ export function renderDetail(poster, opts) {
     if (C.social && C.social.length) {
       var soc = el('div', 'social');
       C.social.forEach(function (s) {
-        var a = document.createElement('a'); a.href = s.url; a.target = '_blank'; a.rel = 'noreferrer'; a.textContent = s.label;
+        var a = document.createElement('a'); a.href = s.url; a.target = '_blank'; a.rel = 'noreferrer';
+        a.appendChild(icon(serviceOf(s.url))); // ikoni verkkotunnuksesta — kertoo minne linkki oikeasti vie
+        a.appendChild(document.createTextNode(s.label));
         soc.appendChild(a);
       });
       booking.appendChild(soc);
