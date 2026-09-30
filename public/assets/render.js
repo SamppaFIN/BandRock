@@ -103,8 +103,8 @@ function todayISO() {
 }
 
 // ── Yksi keikkarivi ──────────────────────────────────────────────────────
-// editable: true muokkausnäkymässä (renderEditable) — lisää Muokkaa/Piilota-Näytä-napit
-// ja merkitsee piilotetun keikan. index.html kuuntelee näitä yhdellä delegoidulla
+// editable: true kun muokkaustilan keikkamuokkain on auki — lisää Muokkaa/Piilota-Näytä-napit
+// ja merkitsee piilotetun keikan. editmode.js kuuntelee näitä yhdellä delegoidulla
 // tapahtumakäsittelijällä (.gig-edit-btn/.gig-toggle-btn), koska lista piirretään uusiksi.
 function buildGigItem(g, editable) {
     var li = el('li', 'gig');
@@ -274,8 +274,79 @@ export function renderCreateCard() {
   return card;
 }
 
+// ── Yksi julkaisu (discografian rivi) ─────────────────────────────────────────
+// Käytetään sekä lukutilassa että muokkaustilan musiikkimuokkaimessa, jotta soitin
+// näyttää muokatessa täsmälleen samalta kuin julkaistulla sivulla.
+export function renderDiscoItem(item, fallbackTitle) {
+  if (item.audio) return buildAudioPlayer(item.audio);
+  var info = playerFor(item.embed);
+  if (!info) return null;
+  if (!info.ratio) {
+    // Spotify/SoundCloud: paljastuu itsestään, ei vaadi klikkausta.
+    return buildAutoPlayer(info, item.embed, item.title || fallbackTitle);
+  }
+  // Video: aina heti näkyvissä, valinnainen kansikuva vierekkäin.
+  var media = el('div', 'media');
+  if (item.cover) {
+    var cover = el('div', 'cover');
+    var ci = document.createElement('img');
+    ci.src = item.cover.src; if (item.cover.width) ci.width = item.cover.width; if (item.cover.height) ci.height = item.cover.height;
+    ci.alt = item.title || 'Kansikuva'; ci.loading = 'lazy';
+    cover.appendChild(ci);
+    var meta = document.createElement('div');
+    if (item.title) meta.appendChild(el('div', 'title', item.title));
+    if (item.kind) meta.appendChild(el('div', 'kind', item.kind));
+    cover.appendChild(meta);
+    media.appendChild(cover);
+  }
+  var video = el('div', 'video');
+  var yf = document.createElement('iframe');
+  yf.src = item.embed; yf.title = item.title || info.label;
+  yf.allow = info.allow; yf.setAttribute('allowfullscreen', '');
+  yf.referrerPolicy = 'strict-origin-when-cross-origin'; yf.loading = 'lazy';
+  video.appendChild(yf);
+  media.appendChild(video);
+  return media;
+}
+
+// Palvelimen rakentamasta upotusosoitteesta takaisin tavalliseksi linkiksi. Tarvitaan
+// muokatessa julkaisuja, joilta alkuperäinen url puuttuu (esim. Ray Jonen käsin kirjoitettu
+// data) — muuten ne katoaisivat tallennuksessa, koska palvelin lukee vain linkkilistan.
+export function urlFromEmbed(embed) {
+  try {
+    var u = new URL(embed);
+    if (u.hostname === 'www.youtube-nocookie.com') return 'https://youtu.be/' + u.pathname.split('/').pop();
+    if (u.hostname === 'open.spotify.com') return 'https://open.spotify.com' + u.pathname.replace(/^\/embed/, '');
+    if (u.hostname === 'w.soundcloud.com') return u.searchParams.get('url') || '';
+  } catch (e) { /* ei kelvollinen osoite */ }
+  return '';
+}
+
+function hasContact(C) {
+  return Boolean(C && (C.phone || C.email || (C.social && C.social.length)));
+}
+
 // ── Detaljisivu: piirtää vain osiot joissa on sisältöä ──────────────────────
-export function renderDetail(poster) {
+// opts.editing: muokkaustila (editmode.js). Sivu piirtyy täsmälleen samoin kuin
+// julkaistuna, mutta jokainen muokattava kohta saa data-region-merkinnän, ja tyhjät
+// kohdat piirtyvät himmeinä paikkamerkkeinä ("+ Lisää …") oikealle paikalleen.
+// opts.gigsAll: näytä myös piilotetut keikat Muokkaa/Piilota-napein (keikkamuokkain auki).
+export function renderDetail(poster, opts) {
+  opts = opts || {};
+  var E = Boolean(opts.editing);
+  function region(node, name) { if (E) node.dataset.region = name; return node; }
+  function placeholder(tag, cls, text) {
+    var n = el(tag, cls + ' placeholder');
+    n.appendChild(el('span', 'ph-text', text));
+    return n;
+  }
+  function placeholderSection(heading, text) {
+    var s = el('section', 'glass pad placeholder');
+    s.appendChild(el('h2', 'label', heading));
+    s.appendChild(el('p', 'ph-text', text));
+    return s;
+  }
+
   var frag = document.createDocumentFragment();
 
   var header = el('header', 'glass hero pad');
@@ -291,39 +362,43 @@ export function renderDetail(poster) {
   } else {
     h1.appendChild(el('span', 'hero-name', poster.title));
   }
-  header.appendChild(h1);
-  if (poster.tagline) header.appendChild(el('p', 'tagline', poster.tagline));
+  header.appendChild(region(h1, 'title'));
+  if (poster.tagline) header.appendChild(region(el('p', 'tagline', poster.tagline), 'tagline'));
+  else if (E) header.appendChild(region(placeholder('p', 'tagline', '+ Lisää lyhyt kuvaus tai iskulause'), 'tagline'));
   header.appendChild(el('div', 'amber-rule'));
-  if (poster.tags && poster.tags.length) {
-    header.appendChild(el('p', 'genres', poster.tags.join(' · ')));
-  }
+  if (poster.tags && poster.tags.length) header.appendChild(region(el('p', 'genres', poster.tags.join(' · ')), 'tags'));
+  else if (E) header.appendChild(region(placeholder('p', 'genres', '+ Lisää tyylilajit'), 'tags'));
   frag.appendChild(header);
 
   // poster.photo voi olla olemassa pelkkien jäsenten takia ilman kuvaa (ks. patchPoster) —
   // .src tarkistetaan erikseen, ettei piirtyisi tyhjä/rikkinäinen kuvalaatikko.
-  if (poster.photo && poster.photo.src) {
+  var photo = poster.photo || {};
+  var members = photo.members || [];
+  if (photo.src) {
     var figure = document.createElement('figure');
     figure.className = 'glass photo';
     var img = document.createElement('img');
-    img.src = poster.photo.src;
-    if (poster.photo.width) img.width = poster.photo.width;
-    if (poster.photo.height) img.height = poster.photo.height;
-    img.alt = poster.photo.alt || poster.title;
+    img.src = photo.src;
+    if (photo.width) img.width = photo.width;
+    if (photo.height) img.height = photo.height;
+    img.alt = photo.alt || poster.title;
     img.loading = 'lazy';
     figure.appendChild(img);
-    if (poster.photo.credit || (poster.photo.members && poster.photo.members.length)) {
+    if (photo.credit || members.length) {
       var cap = el('figcaption', 'photo-caption');
-      if (poster.photo.credit) cap.appendChild(el('p', 'credit', 'Kuva: ' + poster.photo.credit));
-      if (poster.photo.members && poster.photo.members.length) cap.appendChild(buildMembersList(poster.photo.members));
+      if (photo.credit) cap.appendChild(el('p', 'credit', 'Kuva: ' + photo.credit));
+      if (members.length) cap.appendChild(buildMembersList(members));
       figure.appendChild(cap);
     }
-    frag.appendChild(figure);
-  } else if (poster.photo && poster.photo.members && poster.photo.members.length) {
+    frag.appendChild(region(figure, 'photo'));
+  } else if (members.length) {
     // Jäsenet ilman kuvaa: oma pieni osio, ei figcaptionin sisällä.
     var membersSec = el('section', 'glass pad');
     membersSec.appendChild(el('h2', 'label', 'Jäsenet'));
-    membersSec.appendChild(buildMembersList(poster.photo.members));
-    frag.appendChild(membersSec);
+    membersSec.appendChild(buildMembersList(members));
+    frag.appendChild(region(membersSec, 'photo'));
+  } else if (E) {
+    frag.appendChild(region(placeholder('figure', 'glass photo', '+ Lisää bändikuva, kuvaaja ja jäsenet'), 'photo'));
   }
 
   if (poster.bio && poster.bio.length) {
@@ -331,7 +406,9 @@ export function renderDetail(poster) {
     bioSec.setAttribute('aria-labelledby', 'bio-h');
     bioSec.appendChild(el('h2', 'label', 'Bio')).id = 'bio-h';
     poster.bio.forEach(function (p) { bioSec.appendChild(el('p', null, p)); });
-    frag.appendChild(bioSec);
+    frag.appendChild(region(bioSec, 'bio'));
+  } else if (E) {
+    frag.appendChild(region(placeholderSection('Bio', '+ Kirjoita bändin esittely'), 'bio'));
   }
 
   // Yksi tai useampi julkaisu. Lomakkeella lisätty yksittäinen poster.embed
@@ -347,44 +424,15 @@ export function renderDetail(poster) {
     head.appendChild(el('h2', 'label', 'Kuuntele · Listen')).id = 'listen-h';
     head.appendChild(el('em', null, 'Discografia'));
     listenSec.appendChild(head);
-
     disco.forEach(function (item) {
-      if (item.audio) {
-        var ap = buildAudioPlayer(item.audio);
-        if (ap) listenSec.appendChild(ap);
-        return;
-      }
-      var info = playerFor(item.embed);
-      if (!info) return;
-      if (info.ratio) {
-        // Video: aina heti näkyvissä, valinnainen kansikuva vierekkäin.
-        var media = el('div', 'media');
-        if (item.cover) {
-          var cover = el('div', 'cover');
-          var ci = document.createElement('img');
-          ci.src = item.cover.src; if (item.cover.width) ci.width = item.cover.width; if (item.cover.height) ci.height = item.cover.height;
-          ci.alt = item.title || 'Kansikuva'; ci.loading = 'lazy';
-          cover.appendChild(ci);
-          var meta = document.createElement('div');
-          if (item.title) meta.appendChild(el('div', 'title', item.title));
-          if (item.kind) meta.appendChild(el('div', 'kind', item.kind));
-          cover.appendChild(meta);
-          media.appendChild(cover);
-        }
-        var video = el('div', 'video');
-        var yf = document.createElement('iframe');
-        yf.src = item.embed; yf.title = item.title || info.label;
-        yf.allow = info.allow; yf.setAttribute('allowfullscreen', '');
-        yf.referrerPolicy = 'strict-origin-when-cross-origin'; yf.loading = 'lazy';
-        video.appendChild(yf);
-        media.appendChild(video);
-        listenSec.appendChild(media);
-      } else {
-        // Spotify/SoundCloud: paljastuu itsestään, ei vaadi klikkausta.
-        listenSec.appendChild(buildAutoPlayer(info, item.embed, item.title || poster.title));
-      }
+      var node = renderDiscoItem(item, poster.title);
+      if (node) listenSec.appendChild(node);
     });
-    frag.appendChild(listenSec);
+    frag.appendChild(region(listenSec, 'listen'));
+  } else if (E) {
+    var lph = placeholderSection('Kuuntele · Listen', '+ Lisää kappaleita tai videoita (YouTube, Spotify, SoundCloud, mp3)');
+    lph.id = 'kuuntele';
+    frag.appendChild(region(lph, 'listen'));
   }
 
   {
@@ -397,13 +445,14 @@ export function renderDetail(poster) {
     var ghead = el('div', 'head');
     ghead.appendChild(el('h2', 'label', 'Keikat · Gigs')).id = 'gigs-h';
     gigsSec.appendChild(ghead);
-    var visibleGigs = (poster.gigs || []).filter(function (g) { return g.status !== 'hidden'; });
-    gigsSec.appendChild(renderGigSection(visibleGigs));
-    frag.appendChild(gigsSec);
+    var gigList = opts.gigsAll ? (poster.gigs || [])
+      : (poster.gigs || []).filter(function (g) { return g.status !== 'hidden'; });
+    gigsSec.appendChild(renderGigSection(gigList, Boolean(opts.gigsAll)));
+    frag.appendChild(region(gigsSec, 'gigs'));
   }
 
-  if (poster.contact) {
-    var C = poster.contact;
+  var C = poster.contact;
+  if (hasContact(C)) {
     var bookSec = el('section', 'glass pad');
     bookSec.id = 'booking';
     bookSec.setAttribute('aria-labelledby', 'booking-h');
@@ -434,225 +483,12 @@ export function renderDetail(poster) {
       booking.appendChild(soc);
     }
     bookSec.appendChild(booking);
-    frag.appendChild(bookSec);
+    frag.appendChild(region(bookSec, 'contact'));
+  } else if (E) {
+    var bph = placeholderSection('Keikkamyynti · Booking', '+ Lisää sähköposti ja somelinkit (WhatsApp, Facebook, Instagram…)');
+    bph.id = 'booking';
+    frag.appendChild(region(bph, 'contact'));
   }
 
   return frag;
-}
-
-// ── Muokkaus suoraan sivulla (WYSIWYG) ──────────────────────────────────────
-// Sama visuaalinen asettelu kuin renderDetail, mutta näkyvät tekstit ja kuvat ovat
-// muokattavia kenttiä paikallaan. Kaupunki ja musiikkilinkit eivät näy lukutilassa
-// sellaisenaan (kaupunki ei näy ollenkaan, linkeistä näkyy vain valmis soitin) —
-// niille on pieni kiinnitetty työkalupalkki sivun ylälaidassa muun sisällön kanssa.
-// Palauttaa <form>-elementin; kutsuja (index.html) lisää lähetys-/peruutuskäsittelijät
-// samaan tapaan kuin muillekin lomakkeille (form.elements.<nimi>, wireImagePreview jne).
-export function renderEditable(poster) {
-  var form = document.createElement('form');
-  form.id = 'wysiwyg-form';
-  form.noValidate = true;
-
-  var toolbar = el('div', 'glass pad edit-toolbar');
-  var trow = el('div', 'toolbar-row');
-  var cityField = el('label', 'inline-field');
-  cityField.appendChild(el('span', 't', 'Kaupunki'));
-  var cityInput = document.createElement('input');
-  cityInput.type = 'text'; cityInput.name = 'city'; cityInput.maxLength = 60; cityInput.className = 'inline-edit';
-  cityInput.value = poster.city || '';
-  cityField.appendChild(cityInput);
-  trow.appendChild(cityField);
-  var tactions = el('div', 'toolbar-actions');
-  var saveBtn = el('button', 'btn small', 'Tallenna'); saveBtn.type = 'submit';
-  var cancelBtn = el('button', 'btn ghost small', 'Peruuta'); cancelBtn.type = 'button'; cancelBtn.id = 'wysiwyg-cancel';
-  tactions.appendChild(saveBtn); tactions.appendChild(cancelBtn);
-  trow.appendChild(tactions);
-  toolbar.appendChild(trow);
-
-  var mediaField = el('label', 'inline-field full');
-  mediaField.appendChild(el('span', 't', 'Musiikki tai video'));
-  var mediaArea = document.createElement('textarea');
-  mediaArea.name = 'media'; mediaArea.className = 'inline-edit';
-  mediaArea.value = ((poster.discography || []).map(function (d) { return d.url; }).filter(Boolean)).join('\n');
-  mediaField.appendChild(mediaArea);
-  // Pikalisäys: liitä yksi linkki kerrallaan kirjoittamatta itse rivinvaihtoja.
-  var addMediaRow = el('div', 'quick-add');
-  var addMediaInput = document.createElement('input');
-  addMediaInput.type = 'url'; addMediaInput.placeholder = 'Liitä YouTube/Spotify/SoundCloud/mp3-linkki…';
-  addMediaInput.className = 'inline-edit';
-  var addMediaBtn = el('button', 'btn ghost small', '+ Lisää kappale');
-  addMediaBtn.type = 'button';
-  addMediaBtn.addEventListener('click', function () {
-    var v = addMediaInput.value.trim();
-    if (!v) return;
-    mediaArea.value = mediaArea.value ? mediaArea.value.replace(/\n+$/, '') + '\n' + v : v;
-    addMediaInput.value = '';
-    addMediaInput.focus();
-  });
-  addMediaRow.appendChild(addMediaInput);
-  addMediaRow.appendChild(addMediaBtn);
-  mediaField.appendChild(addMediaRow);
-  toolbar.appendChild(mediaField);
-
-  var socialField = el('label', 'inline-field full');
-  socialField.appendChild(el('span', 't', 'Somelinkit'));
-  var socialArea = document.createElement('textarea');
-  socialArea.name = 'social'; socialArea.className = 'inline-edit';
-  socialArea.placeholder = 'https://wa.me/358…\nhttps://instagram.com/…';
-  socialArea.value = ((poster.contact && poster.contact.social) || []).map(function (s) { return s.url; }).join('\n');
-  socialField.appendChild(socialArea);
-  socialField.appendChild(el('span', 'hint', 'Yksi linkki per rivi, enintään 6. Nimi (WhatsApp, Facebook, Instagram…) tunnistetaan itse.'));
-  toolbar.appendChild(socialField);
-
-  toolbar.appendChild(el('p', 'form-status', '')).id = 'wysiwyg-status';
-  form.appendChild(toolbar);
-
-  // Sivulla pitää aina olla täsmälleen yksi h1 (saavutettavuus) — sama sääntö kuin renderDetailissa,
-  // jossa h1 kantaa joko logon tai nimen. Kun logo on, nimi muokataan pienempänä erillisenä
-  // kenttänä logon vieressä (logo on visuaalisesti otsikko); ilman logoa nimikenttä ON h1.
-  var header = el('header', 'glass hero pad');
-  var h1 = document.createElement('h1');
-  var titleInput = document.createElement('input');
-  titleInput.type = 'text'; titleInput.name = 'title'; titleInput.required = true; titleInput.maxLength = 80;
-  titleInput.className = 'inline-edit hero-name-input'; titleInput.value = poster.title || '';
-
-  if (poster.logo) {
-    var logo = document.createElement('img');
-    logo.className = 'hero-logo'; logo.src = poster.logo.src; logo.alt = poster.title;
-    h1.appendChild(logo);
-    header.appendChild(h1);
-    var titleField = el('label', 'inline-field center');
-    titleField.appendChild(el('span', 't', 'Nimi * (näkyy otsikkona vain jos logoa ei ole)'));
-    titleField.appendChild(titleInput);
-    header.appendChild(titleField);
-  } else {
-    titleInput.setAttribute('aria-label', 'Nimi');
-    h1.appendChild(titleInput);
-    header.appendChild(h1);
-  }
-
-  var logoEdit = el('div', 'img-edit-row center');
-  var logoFile = document.createElement('input');
-  logoFile.type = 'file'; logoFile.name = 'logo'; logoFile.accept = 'image/jpeg,image/png,image/webp';
-  var logoPreview = document.createElement('img');
-  logoPreview.className = 'logo-preview-inline'; logoPreview.alt = '';
-  if (poster.logo) { logoPreview.src = poster.logo.src; } else { logoPreview.hidden = true; }
-  logoEdit.appendChild(logoPreview);
-  var logoLabel = el('label', 'file-label', poster.logo ? 'Vaihda logo' : 'Lisää logo');
-  logoLabel.appendChild(logoFile);
-  logoEdit.appendChild(logoLabel);
-  header.appendChild(logoEdit);
-
-  var taglineArea = document.createElement('textarea');
-  taglineArea.name = 'tagline'; taglineArea.maxLength = 400; taglineArea.className = 'inline-edit tagline-input';
-  taglineArea.value = poster.tagline || '';
-  taglineArea.placeholder = 'Lyhyt esittely tai iskulause';
-  header.appendChild(taglineArea);
-  header.appendChild(el('div', 'amber-rule'));
-  var tagsInput = document.createElement('input');
-  tagsInput.type = 'text'; tagsInput.name = 'tags'; tagsInput.maxLength = 120; tagsInput.className = 'inline-edit genres-input';
-  tagsInput.value = (poster.tags || []).join(', ');
-  tagsInput.placeholder = 'tyylilaji, tyylilaji';
-  header.appendChild(tagsInput);
-  form.appendChild(header);
-
-  var figure = document.createElement('figure');
-  figure.className = 'glass photo';
-  var photoPreview = document.createElement('img');
-  photoPreview.className = 'photo-preview-inline';
-  photoPreview.alt = (poster.photo && poster.photo.alt) || poster.title;
-  // poster.photo voi olla olemassa pelkkien jäsenten takia ilman kuvaa (ks. patchPoster) —
-  // .src tarkistetaan erikseen, ettei esikatselu näyttäisi rikkinäistä kuvaa.
-  var hasPhoto = Boolean(poster.photo && poster.photo.src);
-  if (hasPhoto) { photoPreview.src = poster.photo.src; } else { photoPreview.hidden = true; }
-  figure.appendChild(photoPreview);
-  var photoRow = el('div', 'img-edit-row');
-  var photoFile = document.createElement('input');
-  photoFile.type = 'file'; photoFile.name = 'photo'; photoFile.accept = 'image/jpeg,image/png,image/webp';
-  var photoLabel = el('label', 'file-label', hasPhoto ? 'Vaihda kuva' : 'Lisää kuva');
-  photoLabel.appendChild(photoFile);
-  photoRow.appendChild(photoLabel);
-  var creditInput = document.createElement('input');
-  creditInput.type = 'text'; creditInput.name = 'credit'; creditInput.maxLength = 160;
-  creditInput.className = 'inline-edit credit-input'; creditInput.placeholder = 'Kuvateksti, esim. Etunimi Sukunimi ("Kuva: " lisätään automaattisesti)';
-  creditInput.value = (poster.photo && poster.photo.credit) || '';
-  photoRow.appendChild(creditInput);
-  figure.appendChild(photoRow);
-
-  var membersField = el('label', 'inline-field full');
-  membersField.appendChild(el('span', 't', 'Bändin jäsenet'));
-  var membersArea = document.createElement('textarea');
-  membersArea.name = 'members'; membersArea.className = 'inline-edit';
-  membersArea.placeholder = 'Etunimi Sukunimi — Rooli (yksi per rivi)';
-  membersArea.value = ((poster.photo && poster.photo.members) || []).map(function (m) {
-    return m.role ? m.name + ' — ' + m.role : m.name;
-  }).join('\n');
-  membersField.appendChild(membersArea);
-  figure.appendChild(membersField);
-  form.appendChild(figure);
-
-  var bioField = el('label', 'inline-field full');
-  bioField.appendChild(el('span', 't', 'Bio'));
-  var bioArea = document.createElement('textarea');
-  bioArea.name = 'bio'; bioArea.className = 'inline-edit bio-input';
-  bioArea.placeholder = 'Yksi kappale per rivi';
-  bioArea.value = (poster.bio || []).join('\n');
-  bioField.appendChild(bioArea);
-  form.appendChild(bioField);
-
-  var disco = (poster.discography && poster.discography.length) ? poster.discography
-    : (poster.embed ? [{ embed: poster.embed }] : []);
-  if (disco.length) {
-    var listenSec = el('section', 'glass pad listen');
-    listenSec.id = 'kuuntele';
-    var head = el('div', 'head');
-    head.appendChild(el('h2', 'label', 'Kuuntele · Listen'));
-    head.appendChild(el('em', null, 'Muokataan yllä olevasta Musiikki tai video -kentästä'));
-    listenSec.appendChild(head);
-    form.appendChild(listenSec);
-  }
-
-  {
-    // Näyttää myös piilotetut (himmeinä, Näytä-napilla) — samasta syystä kuin
-    // renderDetailissa osio näkyy myös ilman yhtään keikkaa (napin kiinnityskohta).
-    var gigsSec = el('section', 'glass pad');
-    gigsSec.id = 'keikat';
-    var ghead = el('div', 'head');
-    ghead.appendChild(el('h2', 'label', 'Keikat · Gigs'));
-    gigsSec.appendChild(ghead);
-    gigsSec.appendChild(renderGigSection(poster.gigs || [], true));
-    form.appendChild(gigsSec);
-  }
-
-  var bookSec = el('section', 'glass pad');
-  bookSec.id = 'booking';
-  bookSec.appendChild(el('h2', 'label', 'Keikkamyynti · Booking'));
-  var booking = el('div', 'booking');
-  var C = poster.contact || {};
-  if (C.phone) {
-    var pc = el('div', 'col');
-    pc.appendChild(el('div', 't', 'Puhelin'));
-    pc.appendChild(el('div', 'big', C.phoneDisplay || C.phone));
-    booking.appendChild(pc);
-  }
-  var ec = el('div', 'col');
-  ec.appendChild(el('div', 't', 'Sähköposti'));
-  var emailInput = document.createElement('input');
-  emailInput.type = 'email'; emailInput.name = 'email'; emailInput.maxLength = 120;
-  emailInput.className = 'inline-edit'; emailInput.value = C.email || '';
-  emailInput.placeholder = 'yhteys@esimerkki.fi';
-  ec.appendChild(emailInput);
-  booking.appendChild(ec);
-  // Somelinkit muokataan yllä työkalupalkin "Somelinkit"-kentästä (WhatsApp ym.) — ei
-  // näytetä tässä erikseen, ettei sama tieto muokkaannu kahdesta eri paikasta.
-  bookSec.appendChild(booking);
-  form.appendChild(bookSec);
-
-  var danger = el('div', 'danger-zone');
-  var deleteBtn = el('button', 'btn danger small', 'Poista sivu');
-  deleteBtn.type = 'button'; deleteBtn.id = 'wysiwyg-delete';
-  danger.appendChild(deleteBtn);
-  danger.appendChild(el('p', 'hint', 'Poistaa koko sivun pysyvästi.'));
-  form.appendChild(danger);
-
-  return form;
 }

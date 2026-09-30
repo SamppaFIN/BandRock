@@ -186,7 +186,8 @@
 
 <script type="module">
 import { SITE_BASE, restoreFromRedirect, parseRoute, pathFor } from './assets/router.js';
-import { renderDetail, renderEditable, renderCard, renderGigCard, renderCreateCard, slugify, fmtDateISO, el } from './assets/render.js';
+import { renderDetail, renderCard, renderGigCard, renderCreateCard, slugify, fmtDateISO, el } from './assets/render.js';
+import { createEditor, draftPayload } from './assets/editmode.js';
 
 restoreFromRedirect();
 
@@ -347,6 +348,8 @@ async function showGrid() {
 
 // ── Bändin sivu ──────────────────────────────────────────────────────────
 async function showDetail(slug) {
+  editor = null; // poistuttiin muokkaustilasta (tallennus, peruutus tai navigointi)
+  pendingEditCode = '';
   setTitle('Ladataan… · BandRock');
   var skel = el('div', 'skel');
   skel.appendChild(el('div')); skel.appendChild(el('div')); skel.appendChild(el('div'));
@@ -535,9 +538,8 @@ function uploadImage(id, code, resized, field, extra) {
 
 // Esikatselu heti tiedoston valinnan jälkeen — sama pienennysfunktio jota lähetyskin käyttää,
 // joten esikatselu näyttää täsmälleen sen mitä lähetetään.
-// fieldEl (.field[data-for=...]) on vain dialogien lomakkeissa (luonti). Suoran sivueditoinnin
-// (renderEditable) kuva-/logokentillä ei ole sellaista kääretä — silloin virhe merkitään
-// suoraan tiedostokenttään (.bad-inline), samaan tapaan kuin muutkin sen kentät.
+// fieldEl (.field[data-for=...]) on dialogien lomakkeissa. Jos kääre puuttuu, virhe
+// merkitään suoraan tiedostokenttään (.bad-inline). (Muokkaustila, editmode.js, käyttää omaa valitsinta.)
 function wireImagePreview(form, field, previewClass) {
   var input = form.elements[field];
   var preview = form.querySelector('.' + previewClass);
@@ -679,6 +681,20 @@ document.getElementById('edit-code-x').addEventListener('click', function () { e
 document.getElementById('edit-code-cancel').addEventListener('click', function () { editCodeDialog.close(); });
 editCodeDialog.addEventListener('click', function (e) { if (e.target === editCodeDialog) editCodeDialog.close(); });
 
+// Jos tallennus/poisto/keikan piilotus kaatui väärään koodiin muokkaustilassa, tähän
+// jää toiminto jota yritetään uudelleen heti oikean koodin jälkeen — muokkaustila ja sen
+// tallentamattomat muutokset säilyvät, eikä mitään tarvitse tehdä uudestaan.
+var retryAfterCode = null;
+
+function askCodeAgain(retry) {
+  retryAfterCode = retry || null;
+  openEditCodeDialog();
+  document.getElementById('edit-code-status').textContent = retry
+    ? 'Väärä koodi. Anna oikea koodi, niin jatketaan siitä mihin jäit.'
+    : 'Väärä koodi. Yritä uudelleen.';
+  document.getElementById('edit-code-status').className = 'form-status err';
+}
+
 editCodeForm.addEventListener('submit', function (e) {
   e.preventDefault();
   var code = editCodeForm.elements.code.value.trim();
@@ -702,203 +718,124 @@ editCodeForm.addEventListener('submit', function (e) {
   // oikein, ilman että samalla yritetään oikeaa muutosta.
   pendingEditCode = code;
   editCodeDialog.close();
+  if (editor) {
+    var retry = retryAfterCode;
+    retryAfterCode = null;
+    if (retry) retry();
+    return;
+  }
   enterEditMode();
 });
 
-// ── Muokkaus suoraan sivulla (WYSIWYG) ──────────────────────────────────────
-// Korvaa lukutilan piirron (renderDetail) muokattavalla vastineella (renderEditable)
-// samassa #app-kiinnityskohdassa. "Peruuta" ja onnistunut tallennus palaavat
-// showDetailiin, joka piirtää taas normaalin lukutilan tuoreella datalla.
-// Hakee bändin tuoreena Workerilta ja piirtää muokkausnäkymän uudelleen sillä —
-// tarvitaan keikan muokkauksen/piilotuksen jälkeen, koska currentPoster olisi muuten
-// vanha eikä juuri tehty muutos näkyisi ennen kuin käyttäjä poistuisi ja palaisi takaisin.
-async function reenterEditMode() {
-  var res = await fetch(API_URL + '/posters/' + encodeURIComponent(currentPoster.id), { cache: 'no-store' });
-  if (res.ok) currentPoster = await res.json();
-  enterEditMode();
+function fetchJson(url, init) {
+  return fetch(url, init).then(function (r) {
+    return r.json().catch(function () { return {}; }).then(function (body) { return { status: r.status, body: body }; });
+  });
 }
 
+// ── Muokkaustila (editmode.js) ────────────────────────────────────────────
+// Sivu näyttää täsmälleen julkaistulta; kohdan napautus avaa sen muokkaimen paikalleen.
+// Palvelinkutsut ovat täällä ja annetaan editorille takaisinkutsuina.
+var editor = null;
+
 function enterEditMode() {
-  var form = renderEditable(currentPoster);
-  app.replaceChildren(form);
-  focusMain();
   setTitle('Muokataan: ' + currentPoster.title + ' · BandRock');
+  editor = createEditor({
+    poster: currentPoster,
+    mount: app,
+    resizeImage: function (file) { return resizeImageFile(file, MAX_PHOTO_DIM); },
+    onSave: saveDraft,
+    onCancel: function () { editor = null; pendingEditCode = ''; showDetail(currentPoster.id); },
+    onDelete: deleteFromEditor,
+    onAddGig: function () { openGigDialog(null, refreshGigsInEditor); },
+    onEditGig: function (gig) { openGigDialog(gig, refreshGigsInEditor); },
+    onToggleGig: toggleGigFromEditor,
+  });
+  editor.draw();
+  focusMain();
+}
 
-  wireImagePreview(form, 'photo', 'photo-preview-inline');
-  wireImagePreview(form, 'logo', 'logo-preview-inline');
-
-  // "+ Lisää keikka" Keikat-osion otsikkoriviin — sama nappi kuin lukutilassa (showDetail).
-  var gigsHead = form.querySelector('#keikat .head');
-  if (gigsHead) {
-    var addGigBtn = el('button', 'btn small', '+ Lisää keikka');
-    addGigBtn.type = 'button';
-    addGigBtn.addEventListener('click', function () { openGigDialog(null, reenterEditMode); });
-    gigsHead.appendChild(addGigBtn);
+async function saveDraft(draft, images) {
+  if (!API_CONFIGURED) return { message: 'Tallennus ei ole vielä käytössä — tulossa pian.' };
+  var data = draftPayload(draft);
+  data.code = pendingEditCode;
+  var id = encodeURIComponent(currentPoster.id);
+  var res;
+  try {
+    res = await fetchJson(API_URL + '/posters/' + id, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) });
+  } catch (e) {
+    return { message: 'Tallennus epäonnistui. Tarkista verkkoyhteys.' };
   }
+  if (res.status === 403) { askCodeAgain(function () { if (editor) editor.save(); }); return { message: 'Väärä koodi — muutoksesi ovat tallessa, anna oikea koodi.' }; }
+  if (res.status === 400 && res.body.fields) return { fields: res.body.fields };
+  if (res.status === 429) return { message: 'Liikaa yrityksiä juuri nyt. Yritä hetken päästä uudelleen.' };
+  if (res.status !== 200) return { message: 'Tallennus epäonnistui. Yritä hetken päästä uudelleen.' };
 
-  var status = document.getElementById('wysiwyg-status');
-  document.getElementById('wysiwyg-cancel').addEventListener('click', function () { showDetail(currentPoster.id); });
+  if (images.photo) {
+    var pr = await uploadImage(currentPoster.id, pendingEditCode, images.photo, 'photo', { credit: data.credit });
+    if (pr.status !== 201) return { message: 'Muut muutokset tallentuivat, mutta kuvan lataus epäonnistui. Paina Tallenna uudelleen.' };
+    delete images.photo;
+  }
+  if (images.logo) {
+    var lr = await uploadImage(currentPoster.id, pendingEditCode, images.logo, 'logo');
+    if (lr.status !== 201) return { message: 'Muut muutokset tallentuivat, mutta logon lataus epäonnistui. Paina Tallenna uudelleen.' };
+    delete images.logo;
+  }
+  editor = null;
+  pendingEditCode = '';
+  showDetail(currentPoster.id);
+  return null;
+}
 
-  // Keikkojen muokkaus/piilotus: yksi delegoitu kuuntelija, koska lista piirretään
-  // aina kokonaan uusiksi (renderGigSection) eikä yksittäisiä nappeja kannata kiinnittää erikseen.
-  var keikatSec = form.querySelector('#keikat');
-  if (keikatSec) {
-    keikatSec.addEventListener('click', function (e) {
-      var editBtn = e.target.closest('.gig-edit-btn');
-      var toggleBtn = e.target.closest('.gig-toggle-btn');
-      if (!editBtn && !toggleBtn) return;
-      var li = (editBtn || toggleBtn).closest('.gig');
-      var gid = li && li.dataset.gigId;
-      var gig = (currentPoster.gigs || []).find(function (g) { return g.id === gid; });
-      if (!gig) return;
+async function deleteFromEditor() {
+  var res;
+  try {
+    res = await fetchJson(API_URL + '/posters/' + encodeURIComponent(currentPoster.id), { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: pendingEditCode }) });
+  } catch (e) {
+    return { message: 'Poisto epäonnistui. Tarkista verkkoyhteys.' };
+  }
+  if (res.status === 200) {
+    editor = null;
+    pendingEditCode = '';
+    navigate('');
+    loadIndex(true);
+    return null;
+  }
+  if (res.status === 403) {
+    askCodeAgain(null);
+    return { message: 'Väärä koodi — poistoon käy oma koodi tai 99999. Anna koodi ja paina Poista uudelleen.' };
+  }
+  return { message: 'Poisto epäonnistui. Yritä hetken päästä uudelleen.' };
+}
 
-      if (editBtn) {
-        openGigDialog(gig, reenterEditMode);
-        return;
-      }
+// Keikat tallentuvat heti omilla reiteillään — haetaan vain keikat tuoreina, jotta
+// luonnoksen muut tallentamattomat muutokset säilyvät.
+async function refreshGigsInEditor() {
+  var res = await fetch(API_URL + '/posters/' + encodeURIComponent(currentPoster.id), { cache: 'no-store' });
+  if (!res.ok || !editor) return;
+  var fresh = await res.json();
+  currentPoster.gigs = fresh.gigs;
+  editor.setGigs(fresh.gigs);
+}
 
-      var newStatus = gig.status === 'hidden' ? 'visible' : 'hidden';
-      toggleBtn.disabled = true;
-      fetch(API_URL + '/posters/' + encodeURIComponent(currentPoster.id) + '/gigs/' + encodeURIComponent(gid) + '/status', {
-        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: pendingEditCode, status: newStatus }),
-      })
-        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (body) { return { status: r.status, body: body }; }); })
-        .then(function (res) {
-          if (res.status === 200) {
-            reenterEditMode();
-          } else if (res.status === 403) {
-            openEditCodeDialog();
-            document.getElementById('edit-code-status').textContent = 'Väärä koodi. Yritä uudelleen.';
-            document.getElementById('edit-code-status').className = 'form-status err';
-          } else {
-            toggleBtn.disabled = false;
-            status.textContent = 'Piilotus/näyttö epäonnistui. Yritä hetken päästä uudelleen.';
-            status.className = 'form-status err';
-          }
-        })
-        .catch(function () {
-          toggleBtn.disabled = false;
-          status.textContent = 'Piilotus/näyttö epäonnistui. Tarkista verkkoyhteys.';
-          status.className = 'form-status err';
-        });
+async function toggleGigFromEditor(gig) {
+  var res;
+  try {
+    res = await fetchJson(API_URL + '/posters/' + encodeURIComponent(currentPoster.id) + '/gigs/' + encodeURIComponent(gig.id) + '/status', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ code: pendingEditCode, status: gig.status === 'hidden' ? 'visible' : 'hidden' }),
     });
+  } catch (e) {
+    editor.setStatus('⚠ Piilotus/näyttö epäonnistui. Tarkista verkkoyhteys.', true);
+    return refreshGigsInEditor();
   }
-
-  document.getElementById('wysiwyg-delete').addEventListener('click', function () {
-    var btn = this;
-    if (!btn.dataset.confirming) {
-      btn.dataset.confirming = '1';
-      btn.textContent = 'Varmista: poista pysyvästi?';
-      return;
-    }
-    btn.disabled = true;
-    btn.textContent = 'Poistetaan…';
-    status.textContent = '';
-    fetch(API_URL + '/posters/' + encodeURIComponent(currentPoster.id), { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: pendingEditCode }) })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (body) { return { status: r.status, body: body }; }); })
-      .then(function (res) {
-        if (res.status === 200) {
-          pendingEditCode = '';
-          navigate('');
-          loadIndex(true);
-        } else if (res.status === 403) {
-          openEditCodeDialog();
-          document.getElementById('edit-code-status').textContent = 'Väärä koodi. Yritä uudelleen.';
-          document.getElementById('edit-code-status').className = 'form-status err';
-        } else {
-          btn.disabled = false;
-          btn.textContent = 'Varmista: poista pysyvästi?';
-          status.textContent = 'Poisto epäonnistui. Yritä hetken päästä uudelleen.';
-          status.className = 'form-status err';
-        }
-      })
-      .catch(function () {
-        btn.disabled = false;
-        btn.textContent = 'Varmista: poista pysyvästi?';
-        status.textContent = 'Poisto epäonnistui. Tarkista verkkoyhteys.';
-        status.className = 'form-status err';
-      });
-  });
-
-  form.addEventListener('submit', async function (e) {
-    e.preventDefault();
-
-    if (!API_CONFIGURED) {
-      status.textContent = 'Tallennus ei ole vielä käytössä — tulossa pian.';
-      status.className = 'form-status err';
-      return;
-    }
-
-    form.querySelectorAll('.bad-inline').forEach(function (f) { f.classList.remove('bad-inline'); });
-
-    var photoFile = form.elements.photo.files[0] || null;
-    var logoFile = form.elements.logo.files[0] || null;
-    var resizedPhoto = null, resizedLogo = null;
-    if (photoFile || logoFile) {
-      status.textContent = 'Käsitellään kuvaa…';
-      status.className = 'form-status';
-      try {
-        if (photoFile) resizedPhoto = await resizeImageFile(photoFile, MAX_PHOTO_DIM);
-        if (logoFile) resizedLogo = await resizeImageFile(logoFile, MAX_PHOTO_DIM);
-      } catch (err) {
-        status.textContent = err.message;
-        status.className = 'form-status err';
-        return;
-      }
-    }
-
-    var data = {};
-    new FormData(form).forEach(function (v, k) { if (k !== 'photo' && k !== 'logo' && k !== 'credit') data[k] = v; });
-    data.code = pendingEditCode;
-    status.textContent = 'Tallennetaan…';
-    status.className = 'form-status';
-
-    fetch(API_URL + '/posters/' + encodeURIComponent(currentPoster.id), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (body) { return { status: r.status, body: body }; }); })
-      .then(async function (res) {
-        if (res.status === 200) {
-          if (resizedPhoto) {
-            status.textContent = 'Ladataan kuvaa…';
-            var photoRes = await uploadImage(currentPoster.id, pendingEditCode, resizedPhoto, 'photo', { credit: form.elements.credit.value });
-            if (photoRes.status !== 201) {
-              status.textContent = 'Muut muutokset tallentuivat, mutta kuvan lataus epäonnistui. Yritä uudelleen.';
-              status.className = 'form-status err';
-              return;
-            }
-          }
-          if (resizedLogo) {
-            status.textContent = 'Ladataan logoa…';
-            var logoRes = await uploadImage(currentPoster.id, pendingEditCode, resizedLogo, 'logo');
-            if (logoRes.status !== 201) {
-              status.textContent = 'Muut muutokset tallentuivat, mutta logon lataus epäonnistui. Yritä uudelleen.';
-              status.className = 'form-status err';
-              return;
-            }
-          }
-          pendingEditCode = '';
-          showDetail(currentPoster.id);
-        } else if (res.status === 403) {
-          openEditCodeDialog();
-          document.getElementById('edit-code-status').textContent = 'Väärä koodi. Yritä uudelleen.';
-          document.getElementById('edit-code-status').className = 'form-status err';
-        } else if (res.status === 400 && res.body.fields) {
-          var names = Object.keys(res.body.fields);
-          names.forEach(function (k) {
-            var f = form.elements[k];
-            if (f) f.classList.add('bad-inline');
-          });
-          status.textContent = 'Tarkista: ' + names.map(function (k) { return FIELD_LABELS[k] || k; }).join(', ') + '.';
-          status.className = 'form-status err';
-        } else if (res.status === 429) {
-          status.textContent = 'Liikaa yrityksiä juuri nyt. Yritä hetken päästä uudelleen.';
-          status.className = 'form-status err';
-        } else {
-          status.textContent = 'Tallennus epäonnistui. Yritä hetken päästä uudelleen.';
-          status.className = 'form-status err';
-        }
-      })
-      .catch(function () { status.textContent = 'Tallennus epäonnistui. Tarkista verkkoyhteys.'; status.className = 'form-status err'; });
-  });
+  if (res.status === 200) return refreshGigsInEditor();
+  if (res.status === 403) {
+    askCodeAgain(function () { toggleGigFromEditor(gig); });
+    return refreshGigsInEditor();
+  }
+  editor.setStatus('⚠ Piilotus/näyttö epäonnistui. Yritä hetken päästä uudelleen.', true);
+  return refreshGigsInEditor();
 }
 
 // ── Lisää tai muokkaa keikkaa bändin sivulla ─────────────────────────────
@@ -908,7 +845,7 @@ var gigOnSuccess = null;
 // gig: annettuna = muokataan olemassa olevaa (sallii menneen päivämäärän, esitäyttää
 // kentät ja senhetkisen koodin). Puuttuessaan = lisätään uusi, kuten ennenkin.
 // onSuccess: mihin palataan tallennuksen jälkeen — lukutilaan (oletus) tai takaisin
-// WYSIWYG-muokkaustilaan (kutsuja antaa reenterEditModen kun keikkaa muokataan sieltä).
+// muokkaustilaan (kutsuja antaa refreshGigsInEditorin kun keikkaa muokataan sieltä).
 function openGigDialog(gig, onSuccess) {
   gigForm.reset();
   gigForm.querySelector('.photo-preview').hidden = true;
@@ -927,7 +864,6 @@ function openGigDialog(gig, onSuccess) {
     gigForm.elements.city.value = gig.city || '';
     gigForm.elements.note.value = gig.note || '';
     gigForm.elements.url.value = gig.url || '';
-    gigForm.elements.code.value = pendingEditCode || '';
     gigForm.dataset.editingId = gig.id;
   } else {
     document.getElementById('gig-dlg-title').textContent = 'Lisää keikka · Add a gig';
@@ -935,6 +871,8 @@ function openGigDialog(gig, onSuccess) {
     gigForm.elements.date.min = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     delete gigForm.dataset.editingId;
   }
+  // Muokkaustilassa koodi on jo annettu — ei kysytä uudelleen (kenttä jää silti muokattavaksi).
+  gigForm.elements.code.value = pendingEditCode || '';
   gigDialog.showModal();
 }
 document.getElementById('gig-x').addEventListener('click', function () { gigDialog.close(); });

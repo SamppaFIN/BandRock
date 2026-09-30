@@ -145,6 +145,15 @@ test('validatePatch: bio, jäsenet ja somelinkit (WhatsApp mukana) tallentuvat',
   ]);
 });
 
+test('validatePatch: kuvaaja (credit) ja Spotify-somelinkin nimi', () => {
+  const r = validatePatch({ title: 'X', credit: '  Elmo Romppanen ', social: 'https://open.spotify.com/artist/6MZ5sOhKDci1bYweyqJBj7' });
+  assert.equal(r.ok, true);
+  assert.equal(r.value.credit, 'Elmo Romppanen');
+  assert.equal(r.value.social[0].label, 'Spotify');
+  assert.equal(validatePatch({ title: 'X' }).value.credit, null);
+  assert.deepEqual(fields(validatePatch, { title: 'X', credit: 'x'.repeat(LIMITS.credit + 1) }), ['credit']);
+});
+
 test('validatePatch: bio/jäsenet/some rajat ja virheet', () => {
   const manyBio = Array.from({ length: 10 }, (_, i) => 'kappale ' + i).join('\n');
   assert.equal(validatePatch({ title: 'X', bio: manyBio }).value.bio.length, MAX_BIO);

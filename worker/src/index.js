@@ -26,7 +26,7 @@ import { validateCreate, validatePatch, validateGigEntry, sanitizeText, todayHel
 import { generateCode, hashCode, verifyCode, verifyAdmin, isMasterCode, slugify } from './code.js';
 import { detectImageType, MAX_IMAGE_BYTES } from './image.js';
 
-const MAX_BODY = 8192;
+const MAX_BODY = 16384; // bio (6 × 500 merkkiä) + linkit mahtuvat myös ääkkösinä
 const LIST_CACHE_SECONDS = 30;
 
 const json = (body, status, headers) =>
@@ -236,11 +236,18 @@ async function patchPoster(request, env, id, cors) {
     contact: hasContact
       ? { phone, phoneDisplay: poster.contact && poster.contact.phoneDisplay, email: result.value.email, social: result.value.social }
       : null,
-    discography: result.value.discography,
+    // Lomake lähettää vain linkit. Jo olemassa olevan julkaisun muut tiedot (nimi, tyyppi,
+    // kansikuva — esim. Ray Jonen Madrid) säilyvät, kun linkki osoittaa samaan soittimeen.
+    discography: result.value.discography.map((d) => {
+      const old = (poster.discography || []).find((o) => (d.embed && o.embed === d.embed) || (d.audio && o.audio === d.audio));
+      return old ? { ...old, ...d } : d;
+    }),
     bio: result.value.bio,
-    // Jäsenet ovat osa photo-oliota (kuuluvat kuvatekstiin) — kuvan omat kentät (src/width/
-    // height/credit) säilyvät koskemattomina, ne muokataan vain /photo-reitin kautta.
-    photo: (poster.photo || result.value.members.length) ? { ...(poster.photo || {}), members: result.value.members } : poster.photo,
+    // Kuvaaja ja jäsenet ovat osa photo-oliota (kuvateksti) — kuvatiedosto itse (src/width/
+    // height) säilyy koskemattomana, se vaihdetaan vain /photo-reitin kautta.
+    photo: (poster.photo || result.value.members.length || result.value.credit)
+      ? { ...(poster.photo || {}), members: result.value.members, credit: result.value.credit || undefined }
+      : poster.photo,
     updated: Date.now(),
   };
   await env.BUCKET.put(`posters/${id}.json`, JSON.stringify(updated), { customMetadata: customMetaFor(updated) });
@@ -448,8 +455,10 @@ async function uploadImage(request, env, id, field, cors) {
   // Täysi osoite, ei suhteellinen polku: kuva tarjoillaan tältä Workerilta, ei sivustolta
   // (toisin kuin esim. Ray Jonen valmis img/band.jpg, joka on osa itse sivuston tiedostoja).
   const src = `${new URL(request.url).origin}/${key}`;
-  const imageValue = { src, width, height, alt: poster.title };
+  let imageValue = { src, width, height, alt: poster.title };
   if (field === 'photo') {
+    // Kuvan vaihto ei saa hävittää kuvatekstin jäseniä/kuvaajaa (ne muokataan PATCHilla).
+    imageValue = { ...(poster.photo || {}), ...imageValue };
     const credit = sanitizeText(form.get('credit'), LIMITS.credit);
     if (credit) imageValue.credit = credit;
   }

@@ -102,7 +102,7 @@ Kuka tahansa  → lomake → POST/PATCH/DELETE API_URL/posters[...] → Worker t
 public/
   404.html                  GH Pages -uudelleenohjaus
   index.html                 reititin + ruudukko + kaikki dialogit (luo/muokkaa/lisää keikka/info)
-  assets/{bandrock.css, render.js, router.js}
+  assets/{bandrock.css, render.js, router.js, editmode.js}
   data/{index.json, ray-jone.json}
   img/, fonts/
 worker/  (vaihe 1: koskematon D1-versio; vaihe 2: R2-versio)
@@ -122,7 +122,7 @@ Tiketit 1–12 koskevat vanhaa yhden-bändin sivua (osa on yhä ajan tasalla, os
     { "id": "keikat",   "nimi": "🎤 Keikkailmoitukset (D1, korvautuu vaiheessa 2)", "tiketit": [5, 6, 7], "valmius": 98 },
     { "id": "suojaus",  "nimi": "🛡️ Suojaus ja piilotus (D1-versio)", "tiketit": [8, 9], "valmius": 35 },
     { "id": "julkaisu", "nimi": "🚀 Julkaisu",               "tiketit": [10, 11, 12], "valmius": 83 },
-    { "id": "bandrock", "nimi": "⚡ BandRock-alusta",         "tiketit": [13, 14, 15, 16, 17, 18, 19, 20], "valmius": 98 }
+    { "id": "bandrock", "nimi": "⚡ BandRock-alusta",         "tiketit": [13, 14, 15, 16, 17, 18, 19, 20, 21], "valmius": 98 }
   ],
   "tiketit": [
     { "id": 1, "epic": "sivu", "nimi": "Portaa sivu tavalliseksi HTML:ksi", "effort": "S", "riippuvuudet": [], "status": "done",
@@ -174,6 +174,19 @@ Tiketit 1–12 koskevat vanhaa yhden-bändin sivua (osa on yhä ajan tasalla, os
         "Musiikki/video-kenttään pikalisäys: yksi linkki + '+ Lisää kappale' liittää sen tekstialueen loppuun, ei tarvitse itse kirjoittaa rivinvaihtoja",
         "Korjattu samalla: jäsenten tallennus ilman kuvaa loi photo-olion ilman src-kenttää, mikä piirsi rikkinäisen kuvan ja tyhjän ~600 px korkean laatikon — löytyi kuvakaappauksesta, ei tarkistuslistasta; molemmat (renderDetail ja renderEditable) tarkistavat nyt poster.photo.src erikseen poster.photo:n olemassaolon sijaan",
         "40 selaintarkistusta (etusivun keikkakortit, suodatus, bio/jäsenet/some/pikalisäys tallennus ja näyttö, keikan muokkaus+piilotus+näyttö, 0-keikan bändi, 390 px kaikki uudet kentät) + 3 uutta yksikkötestiä (bio/jäsenet/some, allowPast) läpi, axe-core puhtaana etusivulla ja muokkausnäkymässä"
+      ], "valmius": 100 },
+    { "id": 21, "epic": "bandrock", "nimi": "Klikkaa-muokataksesi: muokkaustila näyttää julkaistulta, kohta avautuu vasta napautuksesta", "effort": "L", "riippuvuudet": [19, 20], "status": "done",
+      "acceptance_criteria": [
+        "Muokkaustila piirtää saman renderDetailin kuin julkaistu sivu (opts.editing) — sisällön teksti on täsmälleen sama kuin lukutilassa (testattu), yhtään kenttää ei näy ennen klikkausta",
+        "Jokainen kohta (nimi+logo+kaupunki, kuvaus, tyylilajit, kuva+kuvaaja+jäsenet, bio, musiikki, keikat, yhteystiedot+some) on data-region-alue: hover/fokus = katkoviiva + '✎ Muokkaa'-nappi (kosketusnäytöllä aina näkyvissä), klikkaus avaa vain sen muokkaimen samaan paikkaan kultaisella reunuksella, Valmis/Esc/Enter palauttaa julkaistun näköiseksi uusilla tiedoilla",
+        "Tyhjät kohdat näkyvät muokatessa himmeinä paikkamerkkeinä oikealla paikallaan ('+ Lisää …')",
+        "Logo näkyy muokatessakin vain kerran (oli kahdesti vanhassa muokkaimessa)",
+        "Musiikkimuokkain näyttää oikeat soittimet (kansikuvineen) paikallaan + Poista-napit + '+ Lisää kappale'; uusi linkki näkyy 'soitin näkyy kun tallennat' -rivinä (palvelin rakentaa upotuksen, käyttäjän osoitetta ei upoteta)",
+        "Muutokset kerätään luonnokseen ja tallennetaan kerralla; keikkojen muutokset tallentuvat heti mutta eivät hävitä luonnoksen muita muutoksia",
+        "Väärä koodi tallennettaessa: koodikysely aukeaa, luonnos säilyy ja tallennus jatkuu automaattisesti oikean koodin jälkeen",
+        "Korjattu piilevä tietohäviö: Ray Jonen julkaisuilla ei ollut url-kenttää → vanha muokkain näytti musiikin tyhjänä ja tallennus olisi pyyhkinyt Madridin ja Spotifyn. Nyt urlFromEmbed + palvelin säilyttää vanhan julkaisun nimen/tyypin/kansikuvan kun upotus täsmää",
+        "Kuvaaja tallentuu PATCHilla (ei enää vain kuvan mukana); kuvan vaihto säilyttää jäsenet ja kuvaajan; Spotify tunnistetaan somelinkiksi",
+        "52 selaintarkistusta + savutesti + 50 yksikkötestiä läpi, axe-core puhtaana (myös otsikkomuokkain auki logolla ja ilman), 390 px ilman vaakavieritystä"
       ], "valmius": 100 }
   ]
 }
@@ -183,6 +196,13 @@ Tiketit 1–12 koskevat vanhaa yhden-bändin sivua (osa on yhä ajan tasalla, os
 - Pidä tiketit pieninä ja hyväksymiskriteerit selkeinä. Ei ominaisuuksia, joita ei ole tiketeissä.
 
 ## 5. Päätökset
+
+**Päätetty (Infinite, 30.9.2026) — Klikkaa-muokataksesi (korvaa tiketin 19 "kaikki kentät aina auki" -mallin)**
+- Infinite: "koko sivu näyttää täysin samalta kuin se julkaistaessa näyttäisi… klikkaamalla vasta tulee editointinäkymät näkyviin". Tiketin 19 muokkain näytti kaikki kentät ja työkalupalkin kerralla — logo näkyi kahdesti ja musiikkilinkit olivat irrallaan sivun ylälaidassa.
+- **Toteutus:** `public/assets/editmode.js` (uusi) + `renderDetail(poster, { editing: true })`. Muokkaustila käyttää täsmälleen samaa piirtoa kuin julkaistu sivu; `renderEditable` poistettiin kokonaan. Kohdat merkitään `data-region`illa; `editmode.js` vaihtaa klikatun kohdan tilalle sen muokkaimen ja takaisin. Palvelinkutsut ovat yhä `index.html`:ssä ja annetaan editorille takaisinkutsuina.
+- **Saavutettavuus:** alue itse ei ole `role=button` (sisällä on linkkejä, soittimia ja nappeja → sisäkkäinen interaktiivisuus). Sen sijaan jokaisessa alueessa on oikea `<button class="region-edit-btn">`, joka näkyy hoverissa/fokuksessa ja kosketusnäytöllä aina. Hiiren klikkaus alueeseen avaa myös muokkaimen (linkit eivät vie pois muokkaustilasta).
+- **Luonnos + yksi Tallenna** säilyy. Keikat tallentuvat heti omilla reiteillään, mutta niiden päivitys koskee vain luonnoksen `gigs`-osaa.
+- Kaupungilla ei ole omaa paikkaa julkaistulla sivulla → se muokataan nimen/logon muokkaimessa ("näkyy etusivun kortissa").
 
 **Päätetty (Infinite, 30.9.2026) — Editointi helpoksi: irralliset keikat, keikan muokkaus/piilotus, bio/jäsenet/some**
 - Infinite antoi kuuden kohdan listan käytön esteistä, otsikoitu "isoin muutos siis että editointi halutaan helpoksi". Kaikki tehtiin samassa kierroksessa, Auto Moden mukaisesti kysymättä väliin.
@@ -370,6 +390,9 @@ Jokainen vastaus alkaa lyhyellä otsikolla. Se on tehty luettavaksi nopeasti.
 - Kuvatekstikentän ohjeteksti ("esim. Kuva: Etunimi Sukunimi") oli ristiriidassa sen kanssa mitä koodi tekee (`render.js` lisää "Kuva: " automaattisesti) — tupla-etuliite olisi näkynyt jos käyttäjä olisi seurannut ohjetta kirjaimellisesti. Vika oli ollut olemassa jo vanhassa lomakkeessa asti huomaamatta, koska kukaan aiempi testi ei tarkistanut NÄYTETTYÄ lopputulosta, vain että jokin arvo tallentui. **Kun kenttä muokkaa tekstiä ennen näyttämistä (prefiksi, jälkiliite, muotoilu), testaa aina lopullinen näytetty teksti, ei pelkkää tallennettua raakaa arvoa.**
 - **Ehdollinen "onko olio olemassa" -tarkistus (`if (poster.photo)`) ei riitä kun oliolla voi olla useampi eri syy olla olemassa.** Jäsenten tallennus loi `poster.photo`-olion pelkkien jäsenten takia (ei kuvaa vielä), ja koska renderDetail/renderEditable tarkistivat vain `if (poster.photo)` eivätkä `if (poster.photo && poster.photo.src)`, piirtyi `<img src="undefined">` — rikkinäinen kuva ja `aspect-ratio: 3/2` varasi silti ~600 px korkean tyhjän laatikon. Ei näkynyt yksikään toiminnallinen tarkistus (data tallentui oikein), vain kuvakaappaus paljasti sen. **Kun yhdellä kentällä voi olla useampi olemassaolon syy, tarkista se konkreettinen ala-arvo jota juuri tarvitset (`.src`), ei koko olion totuusarvoa.**
 - **UI:n uuden osion lisääminen (esim. muokkausnäkymä) ei automaattisesti peri sivun MUUALLA rakennettua liitäntälogiikkaa.** "+ Lisää keikka" -nappi kiinnitettiin alunperin vain `showDetail()`:n sisällä (`wrap.querySelector('#keikat .head')`), koska ainoa muokkausreitti oli silloin modaali-ikkuna eikä koskenut Keikat-osion rakenteeseen. Kun WYSIWYG-muokkaus (tiketti 19) alkoi piirtää oman `#keikat`-osionsa `enterEditMode()`:ssa, nappi puuttui sieltä kokonaan eikä kukaan huomannut ennen kuin testattiin oikeasti 0 keikan bändillä. Kun kaksi eri funktiota piirtävät rakenteellisesti saman osion, tarkista aina että KAIKKI siihen kiinnittyvä liitäntäkoodi on lisätty jokaiseen piirtopaikkaan, ei vain ensimmäiseen.
+- **Lomake joka näyttää vain osan tallennettavasta datasta ja lähettää sen kokonaan, pyyhkii loput.** Ray Jonen julkaisuilla oli vain `embed` (ei `url`), muokkain esitäytti linkkikentän `url`eista → tyhjä → Tallenna olisi poistanut julkaisut. Kun lomake korvaa kokonaisen listan, tarkista että JOKAINEN olemassa oleva alkio pystyy kulkemaan lomakkeen läpi takaisin (tässä `urlFromEmbed`) ja että palvelin säilyttää lomakkeelle näkymättömät kentät (nimi, kansikuva) yhdistämällä vanhaan.
+- `.pad` on pystysuuntainen flex (`flex-direction: column`). Kun sen päälle rakennetaan vaakarivi (esim. `.edit-bar`), `flex-direction: row` pitää asettaa itse — muuten lapsen `flex: 1 1 260px` tarkoittaa 260 px **korkeutta** (sama oppi kuin aiemmin `flex-basis`ista). Löytyi vain kuvakaappauksesta.
+- PowerShell-työkalun turvasuodatin tulkitsi `taskkill /PID …` samassa komennossa `Remove-Item`in kanssa poistopoluksi ja esti koko komennon. Pidä prosessien pysäytys (`Stop-Process`) ja tiedostopoistot eri kutsuissa.
 - `await x?.y > 0` ei tee mitä luulee: `await`:n precedence on matalampi kuin `?.`:n, joten se parsiutuu `await (x?.y > 0)` — jos `x` on `Promise`, `Promise.y` on aina `undefined`. Suluta aina `(await x)?.y > 0` tai tallenna välitulos muuttujaan ensin.
 
 🎸

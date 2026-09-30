@@ -21,6 +21,7 @@ const SOCIAL_LABELS = [
   [/(^|\.)tiktok\.com$/, 'TikTok'],
   [/(^|\.)youtube\.com$/, 'YouTube'],
   [/(^|\.)soundcloud\.com$/, 'SoundCloud'],
+  [/(^|\.)spotify\.com$/, 'Spotify'],
 ];
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -165,8 +166,9 @@ function commonFields(src, errors, { titleRequired }) {
   const bio = parseBio(src.bio, errors);
   const members = parseMembers(src.members, errors);
   const social = parseSocial(src.social, errors);
+  const credit = textField(src, errors, 'credit', LIMITS.credit, false);
 
-  return { title, city, tagline, tags, email, discography, bio, members, social };
+  return { title, city, tagline, tags, email, discography, bio, members, social, credit };
 }
 
 /** POST /api/posters — luonti. */
