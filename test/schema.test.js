@@ -167,6 +167,15 @@ test('validatePatch: somelinkin oma selite (muu linkki) s채ilyy, ilman selitett�
   assert.deepEqual(fields(validatePatch, { title: 'X', social: 'Kotisivut ilman linkki채' }), ['social']);
 });
 
+test('validatePatch: WhatsApp-linkiss채 pit채채 olla puhelinnumero', () => {
+  // https://wa.me/ ilman numeroa vie WhatsAppin etusivulle eik채 avaa keskustelua (Ray Jone 30.9.2026).
+  assert.deepEqual(fields(validatePatch, { title: 'X', social: 'https://wa.me/' }), ['social']);
+  assert.deepEqual(fields(validatePatch, { title: 'X', social: 'https://wa.me' }), ['social']);
+  assert.deepEqual(fields(validatePatch, { title: 'X', social: 'https://wa.me/abc' }), ['social']);
+  assert.match(validatePatch({ title: 'X', social: 'https://wa.me/' }).errors.social, /puhelinnumero/);
+  assert.equal(validatePatch({ title: 'X', social: 'https://wa.me/358401234567' }).ok, true);
+});
+
 test('validatePatch: kuvan ja logon poistoliput vain tarkalla true-arvolla', () => {
   assert.equal(validatePatch({ title: 'X', removePhoto: true, removeLogo: true }).value.removePhoto, true);
   assert.equal(validatePatch({ title: 'X', removePhoto: true, removeLogo: true }).value.removeLogo, true);

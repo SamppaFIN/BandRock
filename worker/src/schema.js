@@ -152,6 +152,12 @@ function parseSocial(raw, errors) {
     }
     let host;
     try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { host = url; }
+    // wa.me ilman numeroa vie WhatsAppin etusivulle eikä avaa keskustelua.
+    // Sallitaan numero (wa.me/358401234567) ja WhatsAppin oma lyhytlinkki (wa.me/message/…).
+    if (host === 'wa.me' && !/^\/(\d{7,15}|message\/[A-Za-z0-9]+)\/?$/.test(new URL(url).pathname)) {
+      errors.social = 'WhatsApp-linkistä puuttuu puhelinnumero. Poista linkki ja lisää se uudelleen WhatsApp-napista numerolla.';
+      return [];
+    }
     const label = given || (SOCIAL_LABELS.find(([re]) => re.test(host)) || [null, host])[1];
     out.push({ label, url });
   }
