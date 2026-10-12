@@ -63,7 +63,7 @@ Tämä vaatii kaksi salaisuutta GitHubiin (kerran):
 
 Tokenia ei liitetä mihinkään tiedostoon eikä keskusteluun. Workerin omat salaisuudet (`CODE_SECRET`, `ADMIN_SECRET`, `TURNSTILE_SECRET`) pysyvät Cloudflaressa ennallaan — automaattinen julkaisu ei koske niihin.
 
-Ilman salaisuuksia Worker-vaihe pysähtyy selkeään virheeseen ("puuttuu GitHubin salaisuuksista") eikä sivua julkaista. Käsin julkaisu (`npm run deploy:worker`) toimii edelleen varakeinona.
+Ilman salaisuuksia Worker-vaihe ohitetaan varoituksella ("puuttuu GitHubin salaisuuksista") ja sivu julkaistaan silti. Julkaise silloin Worker käsin projektin juuresta: `git pull` ja sitten `npx wrangler deploy` (sama kuin `npm run deploy:worker`; huom. `npm`, ei `npx run`). Jos salaisuudet ovat paikallaan mutta Workerin julkaisu kaatuu, sivua ei julkaista.
 
 ## Miten sivu toimii
 
