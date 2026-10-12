@@ -1,8 +1,8 @@
 name: Pages
 
 # Järjestys: testit → Worker (Cloudflare) → sivu (GitHub Pages).
-# Sivu julkaistaan vasta kun Worker on päivitetty, joten sivu ei voi koskaan olla
-# Workeria edellä (30.9.2026: uusi sivu lähetti somelinkit muodossa, jota vanha
+# Sivu julkaistaan vasta kun Worker on päivitetty (tai ohitettu puuttuvien salaisuuksien
+# takia, ks. worker-työ), joten sivu ei ole Workeria edellä kun salaisuudet ovat paikallaan (30.9.2026: uusi sivu lähetti somelinkit muodossa, jota vanha
 # käsin julkaistu Worker ei ymmärtänyt → tallennus kaatui).
 
 on:
@@ -45,16 +45,23 @@ jobs:
       # Salaisuudet GitHubin asetuksista (Settings → Secrets and variables → Actions).
       # Workerin omat salaisuudet (CODE_SECRET, ADMIN_SECRET…) säilyvät Cloudflaressa
       # sellaisinaan — deploy ei koske niihin.
+      # Ilman salaisuuksia Worker-julkaisu ohitetaan varoituksella ja sivu julkaistaan silti
+      # (Infinite 12.10.2026) — Worker julkaistaan silloin käsin: npm run deploy:worker.
+      # Jos salaisuudet ovat olemassa mutta julkaisu kaatuu, sivua ei julkaista.
       - name: Tarkista Cloudflare-salaisuudet
+        id: secrets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::error::CLOUDFLARE_API_TOKEN tai CLOUDFLARE_ACCOUNT_ID puuttuu GitHubin salaisuuksista (README: Automaattinen julkaisu)."
-            exit 1
+            echo "::warning::CLOUDFLARE_API_TOKEN tai CLOUDFLARE_ACCOUNT_ID puuttuu GitHubin salaisuuksista — Workeria ei julkaistu, julkaise käsin (npm run deploy:worker). README: Automaattinen julkaisu."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Julkaise Worker
+        if: steps.secrets.outputs.ok == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
