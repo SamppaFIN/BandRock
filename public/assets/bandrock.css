@@ -60,6 +60,9 @@
   a:hover { color: var(--text); }
 
   :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 4px; }
+  /* Skriptin fokusoima otsikko/osio (tabindex=-1, ks. focusMain): ei kehystä. Muuten suoraan
+     avatulla linkillä (esim. WhatsAppista) logon ympärille piirtyi kultainen kehys. */
+  [tabindex="-1"]:focus { outline: none; }
   ::selection { background: var(--gold); color: #000; }
 }
 
@@ -159,6 +162,7 @@
 
   .bio p { font-size: clamp(17px, 2.1vw, 20px); line-height: 1.65; text-wrap: pretty; color: var(--text-soft); }
   .bio p:first-of-type { color: var(--text); }
+  .news p { font-size: clamp(17px, 2.1vw, 20px); line-height: 1.6; text-wrap: pretty; overflow-wrap: anywhere; }
 
   .head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
   .head em { font-size: 15px; color: var(--text-faint); }
@@ -459,6 +463,10 @@
   .social a:hover { border-bottom-color: var(--text); }
   .svc-icon { width: 18px; height: 18px; flex: none; color: var(--gold); }
 
+  .detail-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+  .share { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 12px; min-width: 0; }
+  .share-status { font-size: 15px; color: var(--ok); overflow-wrap: anywhere; }
+  .share-status:empty { display: none; }
   .next-cta { max-width: 860px; margin: 0 auto; display: flex; justify-content: center; padding-top: 26px; }
   .prose { display: flex; flex-direction: column; gap: 16px; }
   .prose h3 { font-size: 11px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--gold); font-weight: 700; margin-top: 6px; }

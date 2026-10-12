@@ -395,7 +395,10 @@ async function showDetail(slug) {
   var back = el('a', 'gig-link', '← Kaikki bändit');
   back.href = pathFor('');
   back.addEventListener('click', function (e) { e.preventDefault(); navigate(''); });
-  wrap.appendChild(back);
+  var topRow = el('div', 'detail-top');
+  topRow.appendChild(back);
+  topRow.appendChild(buildShareButton(poster));
+  wrap.appendChild(topRow);
 
   wrap.appendChild(renderDetail(poster));
 
@@ -449,6 +452,38 @@ async function showDetail(slug) {
   } else {
     focusMain();
   }
+}
+
+// "Jaa": bändin sivun siisti osoite (ilman #ankkuria). Puhelimessa avautuu järjestelmän
+// oma jakovalikko (WhatsApp, Messenger…), muualla linkki kopioidaan leikepöydälle.
+function buildShareButton(poster) {
+  var box = el('div', 'share');
+  var btn = el('button', 'btn ghost small', 'Jaa sivu');
+  btn.type = 'button';
+  var msg = el('span', 'share-status');
+  msg.setAttribute('role', 'status');
+  btn.addEventListener('click', function () {
+    var url = location.origin + pathFor(poster.id);
+    msg.textContent = '';
+    if (navigator.share) {
+      navigator.share({ title: poster.title + ' · BandRock', url: url }).catch(function () { /* käyttäjä perui */ });
+      return;
+    }
+    var shown = function (text) {
+      msg.replaceChildren(document.createTextNode(text + ' '));
+      var a = el('a', null, url); a.href = url;
+      msg.appendChild(a);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function () { shown('✓ Linkki kopioitu:'); },
+        function () { shown('Kopioi linkki:'); });
+    } else {
+      shown('Kopioi linkki:');
+    }
+  });
+  box.appendChild(btn);
+  box.appendChild(msg);
+  return box;
 }
 
 // ── Reititys ─────────────────────────────────────────────────────────────

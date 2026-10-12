@@ -48,16 +48,16 @@ var LINK_KINDS = [
 
 var REGION_LABELS = {
   title: 'Nimi, logo ja kaupunki', tagline: 'Kuvaus', tags: 'Tyylilajit', photo: 'Kuva ja jäsenet',
-  bio: 'Bio', listen: 'Musiikki ja videot', gigs: 'Keikat', contact: 'Yhteystiedot ja some',
+  bio: 'Bio', listen: 'Musiikki ja videot', gigs: 'Keikat', news: 'Kuulumiset', contact: 'Yhteystiedot ja some',
 };
 // Palvelimen virhekenttä → alue, jossa kenttää muokataan.
 var FIELD_REGION = {
   title: 'title', city: 'title', logo: 'title', tagline: 'tagline', tags: 'tags',
-  photo: 'photo', credit: 'photo', members: 'photo', bio: 'bio', media: 'listen', email: 'contact', social: 'contact',
+  photo: 'photo', credit: 'photo', members: 'photo', bio: 'bio', media: 'listen', news: 'news', email: 'contact', social: 'contact',
 };
 var FIELD_NAMES = {
   title: 'Nimi', city: 'Kaupunki', logo: 'Logo', tagline: 'Kuvaus', tags: 'Tyylilajit', photo: 'Kuva',
-  credit: 'Kuvaaja', members: 'Jäsenet', bio: 'Bio', media: 'Musiikki', email: 'Sähköposti', social: 'Somelinkit',
+  credit: 'Kuvaaja', members: 'Jäsenet', bio: 'Bio', media: 'Musiikki', news: 'Kuulumiset', email: 'Sähköposti', social: 'Somelinkit',
 };
 var MAX_LINKS = 6;
 
@@ -235,6 +235,7 @@ export function draftPayload(d) {
     // "Selite https://…" — palvelin käyttää selitettä linkin nimenä (ks. schema.js parseSocial).
     social: (contact.social || []).map(function (s) { return (s.label ? clean(s.label) + ' ' : '') + s.url; }).join('\n'),
     credit: photo.credit || '',
+    news: (d.news && d.news.text) || '',
   };
 }
 
@@ -482,6 +483,23 @@ export function createEditor(opts) {
       node.appendChild(tl);
       apply = function () { draft.tagline = clean(tl.value); };
       return { node: frame(node), apply: apply };
+    }
+
+    if (name === 'news') {
+      node = el('section', 'glass pad news');
+      node.appendChild(el('h2', 'label', 'Kuulumiset · News'));
+      var nw = control('textarea', (draft.news && draft.news.text) || '', { maxLength: 500, placeholder: 'Mitä bändille kuuluu? Esim. uusi single tulossa, studiossa, keikkatauko…', className: 'inline-edit bio-input' });
+      nw.setAttribute('aria-label', 'Kuulumiset');
+      node.appendChild(nw);
+      apply = function () {
+        var text = clean(nw.value);
+        if (!text) { delete draft.news; return; }
+        if (draft.news && draft.news.text === text) return;
+        // Esikatselun päivämäärä; palvelin asettaa oikean (Helsingin aika) tallennuksessa.
+        var n = new Date();
+        draft.news = { text: text, date: n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0') };
+      };
+      return { node: frame(node, 'Lyhyt tilapäivitys, enintään 500 merkkiä. Päivämäärä päivittyy kun teksti muuttuu.'), apply: apply };
     }
 
     if (name === 'tags') {

@@ -5,7 +5,7 @@
  *                                     keikat yhtenä listana ruudukkoa varten
  *   GET    /api/posters/:id          täysi ilmoitus (codeHash ei koskaan mukana)
  *   POST   /api/posters              uusi ilmoitus; palauttaa koodin KERRAN
- *   PATCH  /api/posters/:id          muokkaus koodilla (nimi/kaupunki/kuvaus/tyylilajit/some/media/bio/jäsenet)
+ *   PATCH  /api/posters/:id          muokkaus koodilla (nimi/kaupunki/kuvaus/tyylilajit/some/media/bio/jäsenet/kuulumiset)
  *   DELETE /api/posters/:id          poisto koodilla
  *   POST   /api/posters/:id/gigs     yhden keikan lisäys koodilla (JSON, tai multipart jos keikalla on kuva)
  *   PATCH  /api/posters/:id/gigs/:gigId        keikan muokkaus koodilla (esim. typo, menneenkin keikan)
@@ -243,6 +243,12 @@ async function patchPoster(request, env, id, cors) {
       return old ? { ...old, ...d } : d;
     }),
     bio: result.value.bio,
+    // Kuulumiset: päivämäärä vaihtuu vain kun teksti muuttuu, ettei muun kohdan tallennus
+    // näytä vanhaa uutista uutena. Vanha sivu ei lähetä kenttää lainkaan → ei kosketa.
+    news: result.value.news === undefined ? poster.news
+      : result.value.news
+        ? { text: result.value.news, date: poster.news && poster.news.text === result.value.news ? poster.news.date : todayHelsinki() }
+        : undefined,
     // Kuvaaja ja jäsenet ovat osa photo-oliota (kuvateksti) — kuvatiedosto itse (src/width/
     // height) säilyy koskemattomana, se vaihdetaan vain /photo-reitin kautta.
     photo: (poster.photo || result.value.members.length || result.value.credit)

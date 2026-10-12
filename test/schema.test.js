@@ -213,3 +213,11 @@ test('validateCreate: suora äänitiedosto tallentuu audio-kenttänä, palveluli
   assert.deepEqual(r.value.discography[1], { url: 'https://cdn.example.com/madrid.mp3', audio: 'https://cdn.example.com/madrid.mp3' });
   assert.deepEqual(fields(validateCreate, { title: 'X', media: 'https://cdn.example.com/sivu.html' }), ['media']);
 });
+
+test('validatePatch: kuulumiset — puuttuva kenttä ei koske, tyhjä poistaa, liian pitkä hylätään', () => {
+  assert.equal(validatePatch({ title: 'X' }).value.news, undefined);
+  assert.equal(validatePatch({ title: 'X', news: '   ' }).value.news, '');
+  assert.equal(validatePatch({ title: 'X', news: '  Uusi   single tulossa!  ' }).value.news, 'Uusi single tulossa!');
+  assert.deepEqual(fields(validatePatch, { title: 'X', news: 'x'.repeat(LIMITS.news + 1) }), ['news']);
+  assert.deepEqual(fields(validatePatch, { title: 'X', news: 'a‮b' }), ['news']);
+});

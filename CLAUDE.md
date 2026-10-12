@@ -122,7 +122,7 @@ Tiketit 1–12 koskevat vanhaa yhden-bändin sivua (osa on yhä ajan tasalla, os
     { "id": "keikat",   "nimi": "🎤 Keikkailmoitukset (D1, korvautuu vaiheessa 2)", "tiketit": [5, 6, 7], "valmius": 98 },
     { "id": "suojaus",  "nimi": "🛡️ Suojaus ja piilotus (D1-versio)", "tiketit": [8, 9], "valmius": 35 },
     { "id": "julkaisu", "nimi": "🚀 Julkaisu",               "tiketit": [10, 11, 12, 24], "valmius": 80 },
-    { "id": "bandrock", "nimi": "⚡ BandRock-alusta",         "tiketit": [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23], "valmius": 98 }
+    { "id": "bandrock", "nimi": "⚡ BandRock-alusta",         "tiketit": [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 25], "valmius": 98 }
   ],
   "tiketit": [
     { "id": 1, "epic": "sivu", "nimi": "Portaa sivu tavalliseksi HTML:ksi", "effort": "S", "riippuvuudet": [], "status": "done",
@@ -215,7 +215,14 @@ Tiketit 1–12 koskevat vanhaa yhden-bändin sivua (osa on yhä ajan tasalla, os
         "Todennettu paikallisesti: YAML jäsentyy (työt ja askeleet oikeassa järjestyksessä), wrangler deploy --dry-run läpi (R2, rajoitin, ALLOWED_ORIGINS), npm ci puhtaassa kansiossa läpi",
         "README kohta 4 (Automaattinen julkaisu): tokenin luonti, Account ID, GitHub-salaisuudet, käsiajo",
         "Infinite (tekemättä): salaisuudet GitHubiin + Run workflow; ensimmäinen onnistunut ajo todentaa loput"
-      ], "valmius": 70 }
+      ], "valmius": 70 },
+    { "id": 25, "epic": "bandrock", "nimi": "Mikon palaute: jaa-nappi, logon kultakehys pois, kuulumiset-laatikko", "effort": "M", "riippuvuudet": [21], "status": "review",
+      "acceptance_criteria": [
+        "Logon ympärillä ei kultaista kehystä kun sivu avataan suoraan linkistä (esim. WhatsAppista): syy oli focusMain()-fokuksen :focus-visible-rengas h1:ssä; [tabindex=\"-1\"]:focus { outline: none }",
+        "Bändisivun yläreunassa 'Jaa sivu': puhelimessa järjestelmän jakovalikko (navigator.share), muuten siisti osoite (ilman #ankkuria) leikepöydälle + ✓-viesti linkkeineen",
+        "Kuulumiset · News (poster.news = {text, date}) yhteystietojen yllä, muokattavissa klikkaa-muokataksesi-tilassa; päivämäärä (Helsinki) vaihtuu vain kun teksti muuttuu; tyhjä poistaa; PATCH ilman news-kenttää (vanha sivu) ei koske siihen",
+        "16 selaintarkistusta paikallista Workeria vasten + 1 uusi yksikkötesti (54) läpi, axe-core puhtaana, 420 px ilman vaakavieritystä"
+      ], "valmius": 90 }
   ]
 }
 ```
@@ -224,6 +231,11 @@ Tiketit 1–12 koskevat vanhaa yhden-bändin sivua (osa on yhä ajan tasalla, os
 - Pidä tiketit pieninä ja hyväksymiskriteerit selkeinä. Ei ominaisuuksia, joita ei ole tiketeissä.
 
 ## 5. Päätökset
+
+**Päätetty (Infinite / Mikko Laine, 12.10.2026) — jaa-nappi, kuulumiset, logon kehys (tiketti 25)**
+- Mikon "hyperlinkki"-kysymys tulkittu jaa-napiksi ("joku jaa nappi joka tekis aina linkin joka on bändin"). Linkki on aina bändin siisti osoite ilman ankkuria.
+- "Keltainen kehys logon ympärillä" ei ollut kuvassa eikä muokkaustilassa, vaan saavutettavuuden fokusrengas: suoraan avatulla linkillä selain näyttää skriptin fokusoiman h1:n :focus-visible-renkaan. Fokus siirtyy yhä (ruudunlukija), vain rengas piilotetaan tabindex=-1-kohteilta.
+- Kuulumiset on yksi teksti (≤ 500 merkkiä) eikä historia/syöte — ei pyydetty enempää.
 
 **Päätetty (Infinite, 30.9.2026) — Worker julkaistaan automaattisesti (tiketti 24)**
 - Syy: sivu ja Worker ajautuivat toistuvasti eri versioihin (viimeksi WhatsApp/somelinkkien tallennus kaatui, koska sivu oli uusi ja käsin julkaistu Worker vanha). Infinite: "juu laitetaan automaattiseksi".

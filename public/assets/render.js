@@ -453,6 +453,23 @@ export function renderDetail(poster, opts) {
     frag.appendChild(region(gigsSec, 'gigs'));
   }
 
+  // Kuulumiset: bändin lyhyt tilapäivitys yhteystietojen yllä, päivämäärä palvelimelta.
+  if (poster.news && poster.news.text) {
+    var newsSec = el('section', 'glass pad news');
+    newsSec.id = 'kuulumiset';
+    newsSec.setAttribute('aria-labelledby', 'news-h');
+    var nhead = el('div', 'head');
+    nhead.appendChild(el('h2', 'label', 'Kuulumiset · News')).id = 'news-h';
+    if (poster.news.date) nhead.appendChild(el('em', null, fmtDateISO(poster.news.date)));
+    newsSec.appendChild(nhead);
+    newsSec.appendChild(el('p', null, poster.news.text));
+    frag.appendChild(region(newsSec, 'news'));
+  } else if (E) {
+    var nph = placeholderSection('Kuulumiset · News', '+ Kerro uusimmat kuulumiset (näkyy yhteystietojen yllä)');
+    nph.id = 'kuulumiset';
+    frag.appendChild(region(nph, 'news'));
+  }
+
   var C = poster.contact;
   if (hasContact(C)) {
     var bookSec = el('section', 'glass pad');
