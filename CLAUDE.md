@@ -242,7 +242,7 @@ Tiketit 1–12 koskevat vanhaa yhden-bändin sivua (osa on yhä ajan tasalla, os
 - Järjestys testit → Worker → Pages. Jos Worker-julkaisu kaatuu, sivu jää vanhaan versioon (vanha sivu + uusi Worker on turvallisempi yhdistelmä kuin toisin päin, koska Worker on tehty taaksepäin yhteensopivaksi).
 - Salaisuudet vain GitHubin Actions-salaisuuksina, ei koskaan tiedostoihin tai keskusteluun. Workerin omat salaisuudet (CODE_SECRET ym.) pysyvät Cloudflaressa, deploy ei koske niihin.
 - Tuotannon siemennys (`seed-remote.mjs`) ei ole osa automaattista julkaisua — kertaluonteinen, tehty jo.
-- **Ehdotettu 12.10.2026 (Infinite: "juu muuta"), haarassa, ei mainissa:** salaisuudet tulivat Actionsille tyhjinä (ajot #27–#29). Muutos: puuttuvat salaisuudet ohittavat vain Worker-julkaisun varoituksella, sivu julkaistaan silti. Lähetys mainiin estettiin istunnon turvatarkistuksessa — odottaa Infiniten lupaa tai salaisuuksien korjausta.
+- **Muutettu 12.10.2026 (Infinite: "juu muuta" + "puske mainiin"):** salaisuudet tulivat Actionsille tyhjinä (ajot #27–#29). Nyt puuttuvat salaisuudet ohittavat vain Worker-julkaisun varoituksella, sivu julkaistaan silti (ajo #30 läpi). Riski: sivu voi olla käsin julkaistua Workeria edellä — uudet kentät tehdään niin, että vanha Worker vain ohittaa ne (esim. `news`).
 
 **Päätetty (Infinite, 30.9.2026) — Klikkaa-muokataksesi (korvaa tiketin 19 "kaikki kentät aina auki" -mallin)**
 - Infinite: "koko sivu näyttää täysin samalta kuin se julkaistaessa näyttäisi… klikkaamalla vasta tulee editointinäkymät näkyviin". Tiketin 19 muokkain näytti kaikki kentät ja työkalupalkin kerralla — logo näkyi kahdesti ja musiikkilinkit olivat irrallaan sivun ylälaidassa.
